@@ -1,8 +1,10 @@
+> 2026-11-10 线上状态：新用户级 Token 已通过 D1 列表、元数据及查询验证；迁移、后端、Cron、VAPID 与前端已上线。鉴权、CORS、DeepSeek 实际对话及推送配置检查通过。[独立线上复验](https://github.com/Aero-FUGE/my-personal-assistant/actions/runs/42847699866)成功，验证了 manifest、推送 Service Worker、所有新图标内容及后端 D1 读取。首次发布任务最后因部署切换时资源未及时传播而标红；独立复验已确认上线结果，资源检查现有只读重试。**尚未做 iPhone 真机通知送达验收。**
+
 > 自动发布入口：现有 **Deploy private DeepSeek backend** 增加 `release` 操作，自动验证 D1、迁移、部署后端、首次配置 VAPID、部署前端并做在线检查。已有三项应用 Secrets 和完整 VAPID 均保留；不完整配置会停止。专用 `release/stage2-20261110` 分支的推送可调用同一工作流，普通 main 推送不触发此发布。线上结果以实际 Actions 运行摘要为准。
 
 # 第二阶段：后台推送部署与 iPhone 验收
 
-本阶段代码实现 Web Push，不使用页面定时器作为后台提醒机制。**代码测试不等于真机验收**：必须完成下面的 Cloudflare 配置和部署，再由 iPhone 实际接收系统通知。此仓库操作没有开通付费套餐、创建远程资源、修改原有 Secrets 或自动部署。
+本阶段代码实现 Web Push，不使用页面定时器作为后台提醒机制。**代码测试不等于真机验收**：必须完成下面的 Cloudflare 配置和部署，再由 iPhone 实际接收系统通知。本次未开通付费套餐或新建数据库；使用用户已创建的 D1。原有 DEEPSEEK_API_KEY、APP_PASSWORD、SESSION_SECRET 保留，仅在 Worker 首次新增 VAPID Secrets。
 
 ## 架构、数据与费用
 
