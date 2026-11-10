@@ -9,6 +9,7 @@ self.addEventListener('push', event => {
       body: payload.body || '总裁，您有一项事务需要留意。',
       icon: new URL('icons/icon-192.png', self.registration.scope).href,
       tag: payload.tag || 'assistant-reminder',
+      renotify: false,
       data: { url: safe ? target.href : self.registration.scope },
     });
   })());

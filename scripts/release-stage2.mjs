@@ -3,6 +3,7 @@ import { webcrypto } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { diagnoseToken } from './diagnose-cloudflare-token.mjs';
+import { verifyPublicPWA } from './verify-stage2-live.mjs';
 
 // Commands capture all output privately; only stage names, booleans, HTTP and
 // numeric Cloudflare codes are reported. Secrets never become files/artifacts.
@@ -93,20 +94,7 @@ export async function release({ token, accountId, password, fetcher=fetch, comma
   } else throw new Error('GITHUB_APP_PASSWORD_MISSING_FOR_SMOKE_NO_SECRET_OVERWRITE');
   await command(['wrangler','deploy','--config','wrangler.frontend.jsonc']);
   report('FRONTEND_DEPLOYED');
-  const get=async(path)=>{
-    const response=await fetcher(origin+path,{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000)});
-    if(!response.ok)throw new Error('FRONTEND_SMOKE_HTTP_'+response.status);
-    return response;
-  };
-  const page=await (await get('/')).text();
-  if(!page.includes('apple-touch-icon'))throw new Error('APPLE_ICON_LINK_MISSING');
-  const manifest=await (await get('/manifest.webmanifest')).json();
-  if(manifest.display!=='standalone'||!manifest.icons?.some(i=>i.sizes==='192x192')||!manifest.icons?.some(i=>i.sizes==='512x512'))throw new Error('PWA_MANIFEST_CHECK_FAILED');
-  const sw=await (await get('/sw.js')).text();
-  if(!sw.includes('push-events.js'))throw new Error('PUSH_SERVICE_WORKER_IMPORT_MISSING');
-  const pushScript=await (await get('/push-events.js')).text();
-  if(!pushScript.includes('showNotification')||!pushScript.includes('notificationclick'))throw new Error('PUSH_EVENTS_MISSING');
-  for(const path of ['/icons/icon-192.png','/icons/icon-512.png','/icons/apple-touch-icon.png','/icons/favicon.ico'])await get(path);
+  await verifyPublicPWA({origin,fetcher});
   report('LIVE_PWA_ASSETS_VERIFIED_IPHONE_DELIVERY_NOT_YET_TESTED');
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {

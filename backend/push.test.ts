@@ -1,3 +1,4 @@
+import { vapidHealthy } from "./push";
 import { readFile } from "node:fs/promises";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import {
@@ -59,6 +60,11 @@ beforeAll(async () => {
       " ",
     ),
   );
+  await db.exec(
+    (
+      await readFile("backend/migrations/0002_push_delivery.sql", "utf8")
+    ).replace(/\n/g, " "),
+  );
   const keys = await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
@@ -110,6 +116,91 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("真实 D1 提醒状态与 Web Push 加密", () => {
+  it("实际VAPID公私钥签名互验，错误私钥不被当作健康配置", async () => {
+    expect(await vapidHealthy(env)).toBe(true);
+    expect(await vapidHealthy({ ...env, VAPID_PRIVATE_KEY: "bad" })).toBe(
+      false,
+    );
+  });
+  it("旧sending租约能恢复，未到期租约不会重复发送", async () => {
+    const send = vi.fn(async () => new Response(null, { status: 201 }));
+    vi.stubGlobal("fetch", send);
+    await sync(1, [item()]);
+    time += 120001;
+    await env
+      .PUSH_DB!.prepare(
+        "UPDATE push_reminders SET state='sending',leased_until=?",
+      )
+      .bind(time + 60000)
+      .run();
+    await dispatchReminders(env);
+    expect(send).not.toHaveBeenCalled();
+    time += 60001;
+    await dispatchReminders(env);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((await states())[0].state).toBe("sent");
+  });
+  it("临时429先记录重试，服务接收后才标记sent；Cron有持久化心跳", async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }));
+    vi.stubGlobal("fetch", send);
+    await sync(1, [item()]);
+    time += 120001;
+    await dispatchReminders(env);
+    expect((await states())[0].state).toBe("retry");
+    await dispatchReminders(env);
+    expect(send).toHaveBeenCalledTimes(1);
+    time += 60000;
+    await dispatchReminders(env);
+    expect((await states())[0].state).toBe("sent");
+    const runtime = await env
+      .PUSH_DB!.prepare("SELECT * FROM push_runtime WHERE id='cron'")
+      .first<{ run_count: number; last_success: number }>();
+    expect(runtime!.run_count).toBeGreaterThan(0);
+    expect(runtime!.last_success).toBe(time);
+  });
+  it("网络失败有限重试但未被提前标记已发送，过期发送租约可恢复", async () => {
+    const send = vi.fn(async () => {
+      throw new Error("private detail");
+    });
+    vi.stubGlobal("fetch", send);
+    await sync(1, [item()]);
+    time += 120001;
+    await dispatchReminders(env);
+    expect((await states())[0].state).toBe("retry");
+    for (const wait of [60000, 120000, 300000]) {
+      time += wait;
+      await dispatchReminders(env);
+    }
+    expect(send).toHaveBeenCalledTimes(4);
+    expect((await states())[0].state).toBe("failed");
+  });
+  it("短提醒同步时刚到期不被直接丢弃，测试通知的HTTP错误可追踪", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ reason: "BadJwtToken" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    await sync(1, [item(new Date(time - 1000).toISOString())]);
+    expect((await states())[0].state).toBe("pending");
+    const result = await pushRoute("/push/test", { deviceId }, env);
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      providerStatus: 403,
+      code: "BadJwtToken",
+    });
+    const status = await pushRoute("/push/status", { deviceId }, env);
+    expect(status.body).toMatchObject({
+      device: { last_test_status: 403, last_test_error: "BadJwtToken" },
+    });
+  });
   it("用户选择15分钟间隔后，其余到期提醒顺延", async () => {
     const send = vi.fn(async () => new Response(null, { status: 201 }));
     vi.stubGlobal("fetch", send);
@@ -207,7 +298,7 @@ describe("真实 D1 提醒状态与 Web Push 加密", () => {
   it("首次已逾期不补发，410 失效订阅关闭且无自动重复投递", async () => {
     const send = vi.fn(async () => new Response(null, { status: 410 }));
     vi.stubGlobal("fetch", send);
-    await sync(1, [item(new Date(time - 1).toISOString())]);
+    await sync(1, [item(new Date(time - 300001).toISOString())]);
     await dispatchReminders(env);
     expect(send).not.toHaveBeenCalled();
     await sync(2, [item()]);
@@ -223,6 +314,7 @@ describe("真实 D1 提醒状态与 Web Push 加密", () => {
     vi.stubGlobal("fetch", send);
     expect((await pushRoute("/push/test", { deviceId }, env)).body).toEqual({
       ok: true,
+      providerStatus: 201,
     });
     expect(send).toHaveBeenCalledTimes(1);
     await expect(
