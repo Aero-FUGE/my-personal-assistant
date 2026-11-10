@@ -1,3 +1,5 @@
+import { remoteEnabled } from "./backend-client";
+import { sendRemote, remotePendingFor } from "./remote-chat";
 import { db, uid, now, TaskService, type Task, type Message } from "./data";
 import {
   parseTaskLanguage,
@@ -88,7 +90,14 @@ async function stateFor(id: string): Promise<ConversationState> {
   }
 }
 export async function pendingFor(id: string) {
-  return (await stateFor(id)).pending;
+  try {
+    return (await remotePendingFor(id)) || (await stateFor(id)).pending;
+  } catch {
+    return {
+      summary:
+        "待确认 AI 记录格式损坏，请到数据与设置取消待确认 AI 操作后重试。",
+    };
+  }
 }
 function conflicts(action: TaskAction, tasks: Task[]) {
   if (action.kind === "delete" || action.kind === "complete") return [];
@@ -126,6 +135,15 @@ export const ChatService = {
   async send(text: string, conversationId?: string, requestId: string = uid()) {
     if (!text.trim() || text.length > 4000)
       throw new Error("请输入 1 至 4000 字的消息。");
+    const selected =
+      conversationId ||
+      (await db.preferences.get(ACTIVE_CHAT))?.value ||
+      (await db.conversations.orderBy("createdAt").last())?.id;
+    if (
+      (selected && (await remotePendingFor(selected))) ||
+      (remoteEnabled() && !(selected && (await stateFor(selected)).pending))
+    )
+      return sendRemote(text, selected, requestId);
     // 对话、上下文、任务和审计回复共用事务，失败不会留下“已完成”的假回复。
     return db.transaction(
       "rw",

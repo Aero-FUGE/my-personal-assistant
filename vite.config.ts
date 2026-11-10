@@ -5,6 +5,9 @@ export default defineConfig({
   base:
     (globalThis as unknown as { process: { env: Record<string, string> } })
       .process.env.VITE_BASE_PATH || "/",
+  build: {
+    rollupOptions: { output: { manualChunks: { validation: ["zod"] } } },
+  },
   plugins: [
     react(),
     VitePWA({

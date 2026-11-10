@@ -70,8 +70,12 @@ export function ChatTranscript({
       {visible.map((m) => (
         <article className={`message ${m.role}`} key={m.id}>
           <small>
-            {m.role === "user" ? "总裁" : "律 · 本地助手"} ·{" "}
-            {new Date(m.createdAt).toLocaleString("zh-CN")}
+            {m.role === "user"
+              ? "总裁"
+              : m.provider === "deepseek"
+                ? "律 · DeepSeek"
+                : "律 · 本地助手"}{" "}
+            · {new Date(m.createdAt).toLocaleString("zh-CN")}
           </small>
           <p>{m.content}</p>
           {m.proposals.length > 0 && <LegacyProposal message={m} />}

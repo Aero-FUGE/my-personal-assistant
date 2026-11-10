@@ -1,6 +1,6 @@
 # 我的特助
 
-面向 iPhone 的中文私人生活与事业管理 PWA。React + TypeScript + Vite + React Router（HashRouter）+ Dexie / IndexedDB。当前是可离线使用的本地管理工具；对话为**明确标识的确定性指令规则服务，非真实 AI**，没有接入 DeepSeek，也不需要任何 API Key。
+面向 iPhone 的中文私人生活与事业管理 PWA。React + TypeScript + Vite + React Router（HashRouter）+ Dexie / IndexedDB。默认是可离线使用的本地管理工具，对话为**明确标识的 Mock 规则服务**。现已提供独立 Cloudflare Worker 与 DeepSeek 工具调用流程，需自行配置后端 Secrets 后启用；真实模型尚待配置联调。前端不接收或保存 DeepSeek API Key。
 
 ## 本地运行
 
@@ -37,7 +37,7 @@ npm run test:e2e         # 先执行 build，再执行浏览器验收
 VITE_BASE_PATH=/my-personal-assistant/ npm run build
 ```
 
-部署配置已经提供；仓库管理员仍需启用 Pages 并推送代码。本项目不会假装已完成线上部署。
+本仓库前端已部署到 https://aero-fuge.github.io/my-personal-assistant/ 。复制本项目到新仓库时，仍需按上述步骤启用 Pages。DeepSeek 后端独立部署，不由 Pages 托管。
 
 ## iPhone 使用
 
@@ -52,7 +52,7 @@ Playwright Chromium 手机模拟与 WebKit 测试不能替代实际 iPhone 验�
 - 今日首页：紫金书房全屏背景、透明角色立绘、动态问候对话框与唯一首要事项；保留顶部提醒／设置、聊天入口及原有底部导航。首页不再展示统计、重复任务、时间安排或项目卡片。
 - 任务：创建、编辑、描述、三种状态、优先级、截止时间、预计分钟、所属项目、完成时间、备注、完成与恢复、明日延期、删除、搜索与筛选。
 - 项目：创建与编辑、阶段、关联任务、按完成数统计进度、最新更新时间、倒序日志、下一步行动、暂停与恢复。
-- 对话：首页直接交谈与完整聊天页共享本地会话，支持有限中文指令的任务创建、修改、完成、删除确认及日期查询。普通创建真实自动保存；缺少时间追问，冲突、删除及重要修改先确认。原消息、旧版候选确认、授权记忆和项目进展读取保留。
+- 对话：首页直接交谈与完整聊天页共享会话。默认本地规则模式保留；可连接安全后端启用 DeepSeek，让模型返回任务、项目、日志、提醒、记忆与计划的结构化操作。本地校验、风险确认、事务保存、错误回滚与可检查结果均已实现，真实 API 连通仍需配置后验证。
 - 日程：日期选择、时间安排、保存执行顺序、优先级调整、编辑与延期、过期未完成任务重新安排。
 - 生活：个人事项、习惯每日打卡与累计天数、生活提醒入口。
 - 饮食：保存偏好、维护餐食与标签、按名称/标签筛选、随机推荐、选择历史。偏好目前用于保存展示，**不会被 Mock 自动理解成饮食约束**，请用筛选关键词控制候选。
@@ -65,14 +65,16 @@ Playwright Chromium 手机模拟与 WebKit 测试不能替代实际 iPhone 验�
 ## 结构与扩展
 
 - `src/data.ts`：类型模型、Dexie 版本、TaskService / ProjectService / MemoryService / ReminderService、备份校验与事务。
-- `src/ai.ts`：统一 AIService 协议、Mock 实现、AIActionService 原子确认与审计、安全后端适配器占位。后端占位故意拒绝未经校验的响应，尚不可用于生产 AI。
+- `src/ai.ts`：本地 Mock 协议与旧版候选的原子确认。
+- `src/backend-client.ts` / `src/remote-chat.ts` / `shared/ai-contract.ts`：云端会话客户端、白名单结构化协议、真实事务执行与确认。
+- `backend/worker.ts` / `backend/wrangler.jsonc`：后端密钥代理、私人签名会话、CORS、限流与 DeepSeek 工具调用。
 - `src/components.tsx`：AppShell、CharacterDisplay、DialogueBox、GameButton、GamePanel、TaskCard、ProjectCard、StatusBadge、BottomNavigation、ReminderCard、SectionHeader。
 - `src/App.tsx`：各业务页面、编辑表单、路由。
 - `src/styles.css`：统一主题变量、组件布局与移动端样式。
 - `public/assets/ui/`：backgrounds、buttons、panels、dialogue、navigation、icons、decorations、characters 八类目录，保留用于后续 PNG 美术包。
 - `.github/workflows/deploy.yml`：Pages 自动构建与部署。
 
-文字和按钮均为 HTML，角色仅为文字占位，没有将页面截图作为 UI。后续可用透明 PNG 为组件设置背景，或用 `border-image` 九宫格替换可拉伸面板装饰，业务逻辑无需改变。美术资源通过 `import.meta.env.BASE_URL` 拼接路径，避免子路径部署资源丢失。
+文字和按钮均为 HTML，首页已使用用户提供的透明角色 PNG 与分层美术组件，没有将页面截图作为 UI。后续可继续替换组件背景或采用适当切片，业务逻辑无需改变。美术资源通过 `import.meta.env.BASE_URL` 拼接路径，避免子路径部署资源丢失。
 
 ## 数据与升级策略
 
@@ -82,17 +84,17 @@ Playwright Chromium 手机模拟与 WebKit 测试不能替代实际 iPhone 验�
 
 数据仅在当前设备和浏览器中保存。Safari 页面和主屏幕应用的存储行为由系统决定，不承诺共享；不同设备不会自动同步。清除站点数据、移除应用或系统存储回收均可能影响数据，应定期导出。备份包含私人信息，请自行妥善保管。
 
-## 尚未实现的第二、三阶段
+## 待配置与后续能力
 
-安全后端、DeepSeek 真实模型、通用结构化自然语言理解、智能自动日程规划、真实 AI 长期记忆检索、账户与跨设备同步、服务端 Web Push、用户提供的乙女游戏美术和角色立绘尚未实现。
+DeepSeek 接入代码与安全后端已实现，实际后端部署、真实密钥配置和模型联调尚待完成。账户与跨设备同步、服务端 Web Push、额外角色表情、全量知识检索及后台自动规划尚未实现。当前 AI 可根据概要提出日程建议并在确认后保存已有任务的排序。
 
-后续后端必须负责认证、限流、服务端密钥、请求大小限制、结构化响应校验与操作权限检查。前端只请求同一业务协议，不接收 DeepSeek Key。模糊/高影响操作仍须展示可检查的候选，确认后才能落库；不可让模型直接任意写数据库。推送需要单独的服务端调度与订阅体系，不能由 GitHub Pages 代替。
+现有 Worker 负责认证、限流、服务端密钥、请求大小限制和结构化响应校验，前端执行器负责操作风险检查。前端只请求同一业务协议，不接收 DeepSeek Key。模糊/高影响操作仍须展示可检查的候选，确认后才能落库；不可让模型直接任意写数据库。推送需要单独的服务端调度与订阅体系，不能由 GitHub Pages 代替。
 
 ## 依赖审计
 
 已升级测试工具以消除初始高危/严重问题。当前 npm 审计仍报告 PWA 构建链中 deepmerge、glob、minimatch 及其依赖方共 5 项低/中风险，`npm audit fix` 目前未解决；这些属于开发/构建依赖，不包含在运行时业务包中。不要给构建链提供不可信插件或构建输入。后续升级 Workbox/PWA 构建链时应重新审计并执行全部测试。
 
-## 本次验收记录
+## 初始阶段验收记录（历史）
 
 - `npm install` 成功；`npm run build` 成功生成生产包与离线缓存。
 - `npm test`：10 项业务测试通过，包括迁移、备份校验、确认操作的幂等与失败回滚。
@@ -131,3 +133,7 @@ PLAYWRIGHT_BASE_PATH=/my-personal-assistant npm run test:e2e
 A 思源宋体已作为全局本地字体安装，Unicode 分包及 OFL 授权随项目保存。所有页面共享首页的紫金书房背景与动态光照，原有页面布局和本地数据保持。
 
 测试光影：右上角“数据与设置” → “书房光影”，选择时段或调整时间/滑杆，再返回首页或任务等页面。预览不改变任务日期或提醒；点击“恢复真实时间”或刷新即可退出。详细说明见 [字体与光影测试](docs/appearance-and-fonts.md)。
+
+### DeepSeek 安全接入
+
+新增独立 Cloudflare Worker、私人会话登录、结构化任务/项目等工具操作和确认执行。前端默认保持本地规则模式；真实 AI 需要单独部署后端并配置 Secrets。详见 [DeepSeek 部署与验收](docs/deepseek-setup.md)。请勿把 DeepSeek API Key 放进前端、`VITE_*` 或仓库。

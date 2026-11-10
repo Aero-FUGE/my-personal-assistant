@@ -1,3 +1,4 @@
+import { AISettingsPanel, AIModeNotice } from "./ai-settings";
 import { AppearanceControls } from "./appearance";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
@@ -566,7 +567,7 @@ function Chat() {
         }
       />
       <div className="notice">
-        本地确定性规则服务，未连接 DeepSeek
+        <AIModeNotice />
         或真实大模型。普通任务可直接保存；删除、冲突及重要修改需要确认。请使用明确日期、时间和任务名称。
       </div>
       <label className="conversation-picker">
@@ -1058,11 +1059,12 @@ function Settings() {
   return (
     <>
       <PageTitle title="数据与设置" sub="您的信息，由您掌握。" />
+      <AISettingsPanel />
       <AppearanceControls />
       <GamePanel>
         <SectionHeader title="本地数据与备份" />
         <p>
-          数据仅存储在当前设备、当前浏览器中，不会自动跨设备同步。清除网站数据或系统回收存储空间可能导致数据丢失，请定期导出。
+          任务、项目与聊天记录的本地副本保存在当前设备浏览器，不会自动跨设备同步。云端模式会按授权发送上下文。清除网站数据或系统回收存储空间可能导致本地数据丢失，请定期导出。
         </p>
         <div className="actions">
           <GameButton
@@ -1113,9 +1115,7 @@ function Settings() {
       </GamePanel>
       <SectionHeader title="授权记忆" />
       <GamePanel>
-        <p>
-          仅保存您在对话中明确提出并确认的记忆。Mock 服务不会自动学习您的行为。
-        </p>
+        <p>仅保存您明确授权并确认的长期记忆。您可以随时查看、修改和删除。</p>
         {memories.map((m) => (
           <div className="row memory" key={m.id}>
             <p>{m.content}</p>
@@ -1144,8 +1144,8 @@ function Settings() {
           打开部署地址，点击“分享”，选择“添加到主屏幕”。首次访问需联网完成资源缓存，之后可离线管理本地数据。
         </p>
         <p>
-          当前使用本地规则助手、应用内提醒与原始角色立绘。真实
-          AI、安全后端、跨设备同步、关闭应用后的推送和额外角色表情尚未接入。
+          支持本地规则模式与安全后端 DeepSeek
+          模式；云端模式需先部署后端并配置密钥。跨设备同步、关闭应用后的推送和额外角色表情尚未接入。
         </p>
       </GamePanel>
       {pending !== undefined && (

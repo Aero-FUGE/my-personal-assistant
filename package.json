@@ -7,9 +7,13 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run src",
+    "test": "vitest run src backend",
     "test:e2e": "playwright test",
-    "format": "prettier --write src vite.config.ts playwright.config.ts tests README.md"
+    "format": "prettier --write src vite.config.ts playwright.config.ts tests README.md",
+    "backend:dev": "wrangler dev --config backend/wrangler.jsonc",
+    "backend:deploy": "wrangler deploy --config backend/wrangler.jsonc",
+    "backend:check": "tsc --noEmit --target ES2022 --lib ES2022,DOM --moduleResolution Bundler --module ESNext --strict --skipLibCheck backend/worker.ts",
+    "backend:dry-run": "wrangler deploy --config backend/wrangler.jsonc --dry-run --outdir ../.wrangler-dry-run"
   },
   "dependencies": {
     "dexie": "^4.0.11",
@@ -17,7 +21,8 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.0"
+    "react-router-dom": "^7.1.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
@@ -29,6 +34,7 @@
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
     "vite-plugin-pwa": "^0.21.1",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.159.0"
   }
 }

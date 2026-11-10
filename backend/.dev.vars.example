@@ -1,0 +1,4 @@
+# Copy to backend/.dev.vars for local Worker testing only. Never commit real values.
+DEEPSEEK_API_KEY=""
+APP_PASSWORD=""
+SESSION_SECRET=""

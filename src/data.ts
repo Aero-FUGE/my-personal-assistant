@@ -46,6 +46,7 @@ export interface Message {
   proposals: Proposal[];
   applied: boolean;
   affectedTaskIds?: string[];
+  provider?: "deepseek" | "local";
 }
 export interface Reminder {
   id: string;
@@ -300,6 +301,12 @@ function validateRow(table: string, r: Record<string, unknown>) {
     table === "messages" &&
     r.affectedTaskIds !== undefined &&
     (!Array.isArray(r.affectedTaskIds) || !r.affectedTaskIds.every(isStr))
+  )
+    return false;
+  if (
+    table === "messages" &&
+    r.provider !== undefined &&
+    !["deepseek", "local"].includes(r.provider as string)
   )
     return false;
   if (table === "reminders" && typeof r.completed !== "boolean") return false;

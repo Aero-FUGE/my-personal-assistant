@@ -100,24 +100,6 @@ export const mockAI: AIService = {
     };
   },
 };
-// 第二阶段在安全后端实现此协议；前端仅传递业务数据，不保存服务商密钥。
-export class BackendAIService implements AIService {
-  constructor(private endpoint: string) {}
-  async respond(
-    text: string,
-    context: { tasks: Task[]; lastTaskId?: string },
-  ): Promise<AIResponse> {
-    const response = await fetch(this.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ text, context }),
-    });
-    if (!response.ok) throw new Error("AI 服务暂不可用");
-    throw new Error("后端响应校验尚未接入，请继续使用 Mock 服务");
-  }
-}
-
 // 所有模型候选共用的确认入口：原子提交、可审计、同一消息不可重复执行。
 export const AIActionService = {
   async confirm(messageId: string, proposals: Proposal[]) {

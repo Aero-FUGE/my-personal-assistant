@@ -1,3 +1,4 @@
+import { AIModeNotice } from "./ai-settings";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { flushSync } from "react-dom";
@@ -224,7 +225,7 @@ export function HomePage({
         </p>
       )}
       <p className="home-capability-note">
-        本地指令助手 · 尚未接入真实 AI · 当前表情素材为原始立绘
+        <AIModeNotice />
       </p>
       {inputOpen && (
         <ChatComposer

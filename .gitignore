@@ -7,3 +7,8 @@ dist/
 *.tsbuildinfo
 test-results/
 playwright-report/
+.dev.vars
+.dev.vars.*
+.wrangler/
+.wrangler-dry-run/
+!.dev.vars.example

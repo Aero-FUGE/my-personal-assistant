@@ -48,3 +48,21 @@ select {
 .button.secondary:hover {
   background: #e9dfea;
 }
+.ai-settings {
+  margin-bottom: 24px;
+}
+.ai-settings h2 {
+  margin-bottom: 14px;
+}
+.ai-settings form {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+}
+.ai-settings p {
+  overflow-wrap: anywhere;
+}
+.chat-confirmation p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

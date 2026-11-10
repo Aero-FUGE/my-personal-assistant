@@ -21,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run backend:check
       - uses: actions/configure-pages@v5
         id: pages
       - run: npm run build

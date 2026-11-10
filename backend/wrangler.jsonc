@@ -1,0 +1,24 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "my-personal-assistant-api",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGIN": "https://aero-fuge.github.io",
+    "DEEPSEEK_MODEL": "deepseek-flash",
+  },
+  "ratelimits": [
+    {
+      "name": "LOGIN_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+    {
+      "name": "CHAT_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 20, "period": 60 },
+    },
+  ],
+  "observability": { "enabled": false },
+}

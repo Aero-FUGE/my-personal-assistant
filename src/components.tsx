@@ -1,3 +1,4 @@
+import { AIModeBadge } from "./ai-settings";
 import { useRef, useEffect, type ReactNode } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import {
@@ -167,7 +168,7 @@ function StudyShell() {
             数据与设置
           </NavLink>
           <p>
-            <i /> 本地私人空间<small>数据仅保存在当前浏览器</small>
+            <i /> 本地私人空间<small>业务数据保存在当前浏览器</small>
           </p>
         </div>
       </aside>
@@ -180,7 +181,7 @@ function StudyShell() {
             总裁，今日的事务已为您整理妥当。
           </span>
           <div>
-            <span className="mock-label">Mock AI · 本地模式</span>
+            <AIModeBadge />
             <Link to="/reminders" aria-label="提醒中心">
               <Bell size={20} />
             </Link>
