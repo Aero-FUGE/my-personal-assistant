@@ -75,6 +75,40 @@ export async function remotePendingFor(
     throw new Error("待确认 AI 操作记录损坏，请在设置中取消待确认操作后重试。");
   }
 }
+function describeChanges(
+  patch: Record<string, unknown>,
+  projectName?: (id: string) => string,
+) {
+  const labels: Record<string, string> = {
+    title: "名称",
+    description: "说明",
+    priority: "优先级",
+    dueAt: "时间",
+    estimatedMinutes: "预计用时",
+    projectId: "所属项目",
+    notes: "备注",
+    stage: "阶段",
+    status: "状态",
+    nextAction: "下一步",
+  };
+  return Object.entries(patch)
+    .map(([key, value]) => {
+      const display =
+        key === "projectId"
+          ? value
+            ? projectName?.(String(value)) || String(value)
+            : "不关联项目"
+          : key === "estimatedMinutes"
+            ? `${value}分钟`
+            : value === ""
+              ? key === "dueAt"
+                ? "未排期"
+                : "清空"
+              : String(value);
+      return `${labels[key] || key}：${display}`;
+    })
+    .join("；");
+}
 function operationSummary(o: AIOperation, s: Snapshot): string {
   const task = (id: string) => s.tasks.find((t) => t.id === id)?.title || id;
   const project = (id: string) =>
@@ -83,7 +117,7 @@ function operationSummary(o: AIOperation, s: Snapshot): string {
     case "createTask":
       return `新建任务「${o.title}」；${o.dueAt || "未排期"}；${o.estimatedMinutes}分钟；优先级${o.priority}${o.projectId ? `；项目 ${project(o.projectId)}` : ""}`;
     case "updateTask":
-      return `修改任务「${task(o.taskId)}」：${serial(o.patch)}`;
+      return `修改任务「${task(o.taskId)}」：${describeChanges(o.patch, project)}`;
     case "completeTask":
       return `完成任务「${task(o.taskId)}」`;
     case "deleteTask":
@@ -91,7 +125,7 @@ function operationSummary(o: AIOperation, s: Snapshot): string {
     case "createProject":
       return `新建项目「${o.title}」；阶段 ${o.stage}；下一步 ${o.nextAction || "待定"}`;
     case "updateProject":
-      return `修改项目「${project(o.projectId)}」：${serial(o.patch)}`;
+      return `修改项目「${project(o.projectId)}」：${describeChanges(o.patch, project)}`;
     case "logProject":
       return `记录「${project(o.projectId)}」进展：${o.content}`;
     case "saveMemory":
@@ -243,7 +277,10 @@ async function applyOperations(plan: AIPlan) {
         const p = await db.projects.get(projectId(o.projectId));
         if (!p) throw new Error("项目已不存在");
         const saved = await ProjectService.save({ ...p, ...o.patch });
-        await ProjectService.log(p.id, `律按确认更新：${serial(o.patch)}`);
+        await ProjectService.log(
+          p.id,
+          `律按确认更新：${describeChanges(o.patch)}`,
+        );
         results.push(`已更新项目「${saved.title}」`);
         break;
       }
