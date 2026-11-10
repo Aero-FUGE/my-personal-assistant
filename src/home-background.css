@@ -1,0 +1,238 @@
+/* 根层铺满视口，脱离 main 的 padding / max-width，所有页面共享背景和光照，内容布局分别保留。 */
+html:has(.shell-study),
+body:has(.shell-study) {
+  background: #24152f;
+}
+.shell-study {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  color: #f8eedf;
+}
+.shell-study .home-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+  background-size: cover;
+  background-position: 50% 0%;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+.shell-study .workspace {
+  position: relative;
+}
+.shell-home main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.shell-study .topbar {
+  background: linear-gradient(90deg, #261831eb, #392242c9);
+  border-color: #c7a66d55;
+  color: #f6e8ce;
+  position: relative;
+  z-index: 2;
+}
+.shell-study .desktop-label {
+  color: #d5c1a7;
+}
+.shell-study .mock-label {
+  color: #e1ccb0;
+  border-color: #b99f7170;
+}
+.shell-study .avatar {
+  background: #57405d;
+  color: #f3dfb2;
+  border: 1px solid #ba9865;
+}
+.shell-study .sidebar {
+  background: #291c34ef;
+  border-color: #c7a66d44;
+}
+.shell-study .brand,
+.shell-study .sidebar nav a,
+.shell-study .sidebar-bottom > a {
+  color: #e5d4b5;
+}
+.shell-study .brand-mark,
+.shell-study .sidebar nav a.active {
+  background: #5b3c64;
+  color: #ffe9bc;
+}
+.shell-study .sidebar-bottom p,
+.shell-study .sidebar-bottom small,
+.shell-study .nav-caption {
+  color: #c6b398;
+}
+.shell-study footer {
+  color: #e2cfb7;
+  text-shadow: 0 1px 4px #211128;
+}
+.shell-study .bottom-nav {
+  background: #2d1b38f5;
+  border-color: #bf9b6766;
+}
+.shell-study .bottom-nav a {
+  color: #d0bcc7;
+}
+.shell-study .bottom-nav a.active {
+  color: #ffe3a6;
+}
+.shell-study .bottom-nav a:focus-visible,
+.shell-study a:focus-visible,
+.shell-study button:focus-visible {
+  outline-color: #f3ce8e;
+}
+@media (max-width: 650px) {
+  .shell-study .topbar {
+    min-height: calc(68px + env(safe-area-inset-top));
+    height: auto;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  }
+  .shell-study .home-background {
+    background-position: 50% 0%;
+  }
+  .shell-study .bottom-nav {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 单张原画的氛围模拟，不改变窗外天空或书房结构。 */
+.shell-study .home-background {
+  filter: brightness(var(--room-brightness, 1))
+    saturate(var(--room-saturation, 1));
+  transition: filter var(--room-transition, 60s) linear;
+}
+.home-light-layers {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  isolation: isolate;
+}
+.home-light-layers > div {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--room-transition, 60s) linear;
+  pointer-events: none;
+}
+.room-warm {
+  background: linear-gradient(120deg, transparent, #f9b269);
+  mix-blend-mode: soft-light;
+  opacity: var(--room-warm, 0);
+}
+.room-cool {
+  background: #273d83;
+  mix-blend-mode: soft-light;
+  opacity: var(--room-cool, 0);
+}
+.room-window {
+  background: radial-gradient(ellipse at 90% 24%, #fff5d7, transparent 65%);
+  mix-blend-mode: screen;
+  opacity: var(--room-window, 0);
+}
+.room-lamp {
+  background: radial-gradient(ellipse at 4% 30%, #f5bc6a, transparent 45%);
+  mix-blend-mode: screen;
+  opacity: var(--room-lamp, 0);
+}
+.room-shade {
+  background: #10132f;
+  opacity: var(--room-shade, 0);
+}
+.home-portrait > img {
+  filter: brightness(var(--room-portrait, 1)) drop-shadow(0 10px 15px #27152c55);
+  transition: filter var(--room-transition, 60s) linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-study .home-background,
+  .home-light-layers > div,
+  .home-portrait > img {
+    transition: none;
+  }
+}
+
+/* 书房外观共享，其他页面仍保留原有内容宽度、内边距和卡片结构。 */
+.shell-study .page-title h1 {
+  color: #f5e2bb;
+  text-shadow: 0 2px 6px #201326;
+}
+.shell-study .page-title p {
+  color: #e1d0df;
+}
+.shell-study .panel,
+.shell-study .project-card,
+.shell-study .modal {
+  color: #49384f;
+}
+.shell-study .tabs button {
+  color: #eddfed;
+}
+.shell-study .tabs button.active {
+  background: #5b3c64;
+  color: #ffe7bd;
+  border-color: #ba9865;
+}
+.room-preview-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: #39243eef;
+  color: #ffe8bd;
+  font-size: 13px;
+}
+.room-preview-banner button {
+  color: inherit;
+  border: 1px solid #ba9865;
+  border-radius: 6px;
+  background: #5b3c64;
+  padding: 5px 10px;
+}
+.appearance-controls {
+  margin-bottom: 24px;
+}
+.appearance-controls h2 {
+  margin-top: 0;
+}
+.appearance-controls p {
+  line-height: 1.8;
+}
+.light-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.light-presets button[aria-pressed="true"] {
+  outline: 2px solid #977440;
+}
+.appearance-controls label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.appearance-controls input[type="range"] {
+  width: 100%;
+  padding: 0;
+  accent-color: #76517f;
+}
+.appearance-note {
+  font-size: 13px;
+}
+.shell-study main > .empty,
+.shell-study main > .muted,
+.shell-study .toolbar > .muted {
+  color: #e1d0df;
+}
+.shell-study main > .empty p {
+  color: #e1d0df;
+}
+.shell-study .panel p,
+.shell-study .project-card p {
+  color: #7d687f;
+}

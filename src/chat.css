@@ -1,0 +1,207 @@
+.assistant-composer {
+  border: 1px solid #b69a76;
+  background: #f8f1ec;
+  padding: 14px;
+  border-radius: 12px;
+  color: #49334f;
+  min-width: 0;
+  margin-top: 14px;
+}
+.composer-heading,
+.composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.composer-heading label {
+  margin: 0;
+  color: #634568;
+  font-size: 12px;
+}
+.composer-heading button,
+.chat-confirmation button,
+.composer-actions button,
+.chat-history-more {
+  border: 1px solid #96749e;
+  background: #50325d;
+  color: #fff1dd;
+  border-radius: 6px;
+  min-height: 40px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.assistant-composer textarea {
+  font-family: inherit;
+  font-size: 16px;
+  background: #fffafa;
+  color: #37213d;
+  border-color: #c4acc9;
+  resize: vertical;
+  max-height: 180px;
+}
+.composer-actions {
+  margin-top: 8px;
+}
+.composer-actions span {
+  font-size: 10px;
+  color: #7c637d;
+}
+.assistant-composer [role="alert"] {
+  color: #923a48;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.chat-confirmation {
+  padding: 12px;
+  background: #f4e9df;
+  border: 1px solid #b38c65;
+  border-radius: 8px;
+  color: #503750;
+  font-size: 12px;
+}
+.chat-confirmation p {
+  color: inherit;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.chat-confirmation button {
+  margin-right: 8px;
+}
+.home-context-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.home-context-actions .home-art-button {
+  width: 100%;
+  min-height: 60px;
+}
+.home-context-actions .home-art-button-primary {
+  font-size: 13px;
+}
+.home-conversation-page .home-stage {
+  --home-portrait-height: clamp(230px, 35svh, 370px);
+}
+.home-conversation-page .home-dialogue {
+  padding-bottom: 25px;
+}
+.home-dialogue-message {
+  touch-action: pan-y;
+  min-width: 0;
+}
+.home-dialogue-message > p,
+.home-long-message p {
+  font-family: var(--font-dialogue);
+  font-size: 17px;
+  line-height: 1.8;
+  text-align: center;
+  color: #49314c;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0;
+}
+.home-dialogue-message {
+  padding: 0 12px;
+}
+.home-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 14px;
+  margin-top: 8px;
+}
+.home-history-controls button,
+.home-history-controls a {
+  font-size: 11px;
+  min-height: 36px;
+  background: none;
+  border: 0;
+  color: #765178;
+  padding: 6px 0;
+}
+.home-history {
+  max-height: min(42svh, 360px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 12px;
+  padding: 6px;
+  border-top: 1px solid #c1a6c4;
+}
+.home-history .message {
+  max-width: 100%;
+  margin: 10px 0;
+  padding: 12px;
+  background: #f5eaf0;
+}
+.home-history .message.user {
+  background: #e6d6e5;
+  margin-left: 14px;
+}
+.home-history .message p {
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.home-capability-note {
+  font-size: 9px;
+  text-align: center;
+  color: #f2ddc4;
+  text-shadow: 0 1px 3px #25132e;
+  margin: 8px 0;
+}
+.home-art-error-inline {
+  color: #fff3e8;
+  background: #673148;
+  padding: 10px;
+}
+.home-long-message summary {
+  font-size: 15px;
+  text-align: center;
+  color: #65426a;
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.home-long-message p {
+  font-size: 15px;
+}
+.home-conversation-page .assistant-composer {
+  scroll-margin-bottom: 100px;
+}
+.home-conversation-page .assistant-composer.keyboard-visible {
+  position: fixed;
+  z-index: 80;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--keyboard-inset, 0px) + 10px);
+  max-height: 55svh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px #1c102b80;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 359px) {
+  .home-dialogue-message > p {
+    font-size: 16px;
+  }
+  .home-context-actions {
+    gap: 4px;
+  }
+  .home-context-actions .home-art-button {
+    font-size: 11px;
+  }
+}

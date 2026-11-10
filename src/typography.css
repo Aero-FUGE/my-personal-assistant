@@ -1,0 +1,50 @@
+/* 已确认 A：思源宋体。OFL 授权、本地 Unicode 分包，保留系统回退。 */
+:root {
+  --font-title:
+    "AssistantSerif", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  --font-dialogue:
+    "AssistantSerif", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  --font-body: "AssistantSerif", "Songti SC", "PingFang SC", serif;
+  --font-numbers: Georgia, "Times New Roman", serif;
+}
+body {
+  font-family: var(--font-body);
+}
+h1,
+h2,
+.page-title h1,
+.section-header h2 {
+  font-family: var(--font-title);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+.button,
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-body);
+}
+.home-date,
+.task-meta,
+.progress-label {
+  font-family: var(--font-numbers), var(--font-body);
+}
+:root {
+  --green: #513959;
+  --gold: #b89b68;
+  --muted: #87778c;
+  --line: #e3dce5;
+  --panel: #fffbf7;
+}
+.button:hover {
+  background-color: #67466e;
+}
+.button.secondary {
+  color: #66466c;
+  background: #f3edf3;
+  border-color: #d8c7db;
+}
+.button.secondary:hover {
+  background: #e9dfea;
+}

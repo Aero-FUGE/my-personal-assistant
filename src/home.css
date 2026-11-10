@@ -1,0 +1,370 @@
+/* 首页美术独立作用域，不覆盖其他页面卡片或公共按钮。 */
+.home-page {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 10px 18px 24px;
+  color: #f9edda;
+}
+.home-date {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: #f5e4ca;
+  text-shadow: 0 1px 5px #221429;
+}
+.home-stage {
+  position: relative;
+  --home-portrait-height: clamp(164px, 23svh, 215px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--home-portrait-height) auto;
+  align-items: start;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-top: 4px;
+}
+.home-portrait {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: start;
+  width: min(100%, 300px);
+  height: calc(var(--home-portrait-height) + 60px);
+  /* 仅立绘视窗遮住下半身；任务与页面从不裁切。渐隐区落在对话框后方。 */
+  overflow: hidden;
+  mask-image: linear-gradient(#000 calc(100% - 28px), transparent);
+  pointer-events: none;
+  user-select: none;
+  margin: 0 auto;
+}
+.home-portrait > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 15px #27152c55);
+}
+.home-art-error {
+  position: absolute;
+  inset: 20px;
+  color: #fff3e1;
+  background: #502c40;
+  padding: 20px;
+}
+.home-dialogue {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  grid-column: 1;
+  grid-row: 2;
+  padding: clamp(50px, 13.5vw, 82px) clamp(26px, 7vw, 44px) 18px;
+  margin-top: 0;
+  color: #382744;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.home-art-frame {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  user-select: none;
+}
+.home-art-top,
+.home-art-bottom {
+  display: block;
+  width: 100%;
+  height: auto;
+  flex: none;
+}
+.home-art-middle {
+  flex: 1;
+  min-height: 0;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.home-assistant-name {
+  position: absolute;
+  top: clamp(27px, 8vw, 56px);
+  left: 14%;
+  width: 31%;
+  text-align: center;
+  font-size: clamp(10px, 2.7vw, 14px);
+  color: #fff2d9;
+  text-shadow: 0 1px 3px #332039;
+  white-space: nowrap;
+}
+.home-dialogue h1 {
+  font-family: var(--font-dialogue);
+  font-size: clamp(18px, 4.7vw, 24px);
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0 0 4px;
+  color: #3a2849;
+  letter-spacing: 1px;
+}
+.home-dialogue p {
+  color: #513f59;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  padding-right: 24px;
+}
+.home-chat-link {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 36px;
+  font-size: 12px;
+  color: #70476e;
+  margin-top: 2px;
+}
+.home-primary {
+  position: relative;
+  isolation: isolate;
+  margin: 0;
+  padding: clamp(58px, 15vw, 92px) clamp(25px, 7vw, 43px)
+    clamp(58px, 17vw, 100px);
+  min-width: 0;
+  color: #392840;
+}
+.home-primary-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 0;
+  gap: 8px;
+}
+.home-primary-header h2 {
+  position: absolute;
+  top: clamp(19px, 5.2vw, 32px);
+  left: 25%;
+  width: 50%;
+  font-family: var(--font-dialogue);
+  font-size: clamp(13px, 3.5vw, 19px);
+  line-height: 1.6;
+  color: #fff0d2;
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+.home-primary-header > a {
+  position: absolute;
+  top: clamp(48px, 12vw, 74px);
+  right: clamp(25px, 7vw, 43px);
+  color: #775674;
+  font-size: 11px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+.home-primary-task {
+  min-width: 0;
+}
+.home-task-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  padding-right: 65px;
+}
+.home-task-tags span {
+  background: #5a3e6420;
+  color: #61436a;
+  padding: 4px 8px;
+  border: 1px solid #a382a44d;
+  border-radius: 3px;
+}
+.home-primary-task h3 {
+  margin: 8px 0;
+  color: #3c2a46;
+  font-family: var(--font-dialogue);
+  font-weight: 600;
+  font-size: clamp(17px, 4.5vw, 21px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.home-task-details {
+  display: flex;
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #725970;
+  line-height: 1.8;
+}
+.home-task-details span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.home-task-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 5px 10px;
+  margin-top: 6px;
+}
+.home-page .button.home-art-button {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 52px;
+  padding: 12px 14px;
+  font-size: 12px;
+  white-space: normal;
+  line-height: 1.5;
+  transition: transform 0.1s;
+}
+.home-page .button.home-art-button-primary {
+  background-image: var(--home-primary-default);
+  color: #fff3de;
+  text-shadow: 0 1px 2px #211329;
+}
+.home-task-actions > .home-art-button-primary {
+  grid-column: 1/-1;
+  min-height: 54px;
+  width: 100%;
+  font-size: 14px;
+}
+.home-page .button.home-art-button-primary:not(:disabled):active {
+  background-image: var(--home-primary-pressed);
+  transform: translateY(1px);
+}
+.home-page .button.home-art-button-primary:disabled {
+  background-image: var(--home-primary-disabled);
+  opacity: 1;
+  color: #f2e9ec;
+}
+.home-page .button.home-art-button-secondary {
+  background-image: var(--home-secondary-default);
+  color: #553858;
+}
+.home-page .button.home-art-button-secondary:not(:disabled):active {
+  background-image: var(--home-secondary-pressed);
+  transform: translateY(1px);
+}
+.home-page .button.home-art-button-secondary:disabled {
+  background-image: var(--home-secondary-disabled);
+  opacity: 1;
+  color: #7b6b7f;
+}
+.home-edit {
+  grid-column: 1/-1;
+  background: none;
+  border: 0;
+  font-size: 12px;
+  color: #765274;
+  min-height: 44px;
+  padding: 8px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.home-task-empty {
+  text-align: center;
+  padding-top: 8px;
+}
+.home-task-empty h3 {
+  font-family: var(--font-dialogue);
+  color: #503552;
+  font-size: 15px;
+  line-height: 1.9;
+}
+.home-task-empty p {
+  color: #725c73;
+  font-size: 12px;
+}
+.home-task-empty .home-art-button {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+.home-feedback {
+  color: #614166;
+  font-size: 12px;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.home-feedback:empty {
+  margin: 0;
+}
+.home-error {
+  color: #923a48;
+}
+@media (min-width: 651px) {
+  .home-page {
+    padding-top: 18px;
+  }
+}
+@media (max-width: 359px) {
+  .home-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .home-dialogue {
+    padding-left: 23px;
+    padding-right: 23px;
+    margin-top: 0;
+  }
+  .home-primary {
+    padding-left: 23px;
+    padding-right: 23px;
+  }
+  .home-assistant-name {
+    font-size: 10px;
+  }
+  .home-task-actions {
+    gap: 4px 6px;
+  }
+  .home-page .button.home-art-button {
+    font-size: 11px;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  .shell-home .topbar > div {
+    gap: 10px;
+  }
+  .shell-home .mock-label {
+    font-size: 7px;
+    padding: 5px 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page .button.home-art-button {
+    transition: none;
+  }
+}
+
+.home-page .button.home-art-button:hover {
+  background-color: transparent;
+}
+
+.home-task-description {
+  color: #604b65;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.home-task-empty h3 {
+  margin: 0 0 6px;
+}
+.home-task-actions button {
+  scroll-margin-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+
+/* 原生滚动定位也须避开首页固定导航；不锁定或裁切滚动内容。 */
+html:has(.shell-home) {
+  scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
