@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {release,generateVapid,vapidState} from './release-stage2.mjs';
 import {webcrypto} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
 const accountId='a'.repeat(32),token='private-ci-token',password='private-ci-password';
 const original=['DEEPSEEK_API_KEY','APP_PASSWORD','SESSION_SECRET'];
 const vapidNames=['VAPID_PUBLIC_KEY','VAPID_PRIVATE_KEY','VAPID_SUBJECT'];
@@ -30,6 +31,7 @@ function fixture({denyD1=false,existingVapid=false,partialVapid=false}={}) {
   if(u.pathname==='/manifest.webmanifest')return json({display:'standalone',icons:[{sizes:'192x192'},{sizes:'512x512'}]});
   if(u.pathname==='/sw.js')return new Response('importScripts("push-events.js")');
   if(u.pathname==='/push-events.js')return new Response('showNotification notificationclick');
+  if(u.pathname.startsWith('/icons/'))return new Response(await readFile('public'+u.pathname));
   return new Response('asset');
  };
  const command=async(args,input)=>{

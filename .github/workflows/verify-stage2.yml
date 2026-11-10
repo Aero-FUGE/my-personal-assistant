@@ -1,0 +1,19 @@
+name: Verify stage2 deployment
+on:
+  push:
+    branches: [verify/stage2-20261110]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check deployed PWA and authenticated push configuration
+        env:
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: node scripts/verify-stage2-live.mjs
