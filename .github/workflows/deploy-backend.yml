@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: "操作：diagnose 只读账号核对；deploy 部署；migrate 迁移；migrate-and-deploy 两者"
+        description: "操作：diagnose Token 与 D1 只读诊断；deploy 部署；migrate 迁移；migrate-and-deploy 两者"
         required: true
         type: choice
         default: deploy
@@ -12,10 +12,6 @@ on:
           - deploy
           - migrate
           - migrate-and-deploy
-      database_url:
-        description: "仅 diagnose 可选：Cloudflare D1 数据库详情页 URL（无需 Token）"
-        required: false
-        type: string
 permissions:
   contents: read
 concurrency:
@@ -36,12 +32,12 @@ jobs:
         if: ${{ inputs.operation != 'diagnose' }}
       - run: npm test
         if: ${{ inputs.operation != 'diagnose' }}
-      - name: Read-only D1 account check
+      - name: Read-only Cloudflare Token and D1 diagnosis
         if: ${{ inputs.operation == 'diagnose' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node scripts/check-d1-account.mjs
+        run: node scripts/diagnose-cloudflare-token.mjs
       - name: Check existing Cloudflare credentials
         if: ${{ inputs.operation != 'diagnose' }}
         env:
