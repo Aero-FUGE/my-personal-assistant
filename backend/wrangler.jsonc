@@ -8,6 +8,12 @@
     "ALLOWED_ORIGIN": "https://aero-fuge.github.io",
     "DEEPSEEK_MODEL": "deepseek-flash",
   },
+  "d1_databases": [{
+    "binding": "PUSH_DB",
+    "database_name": "my-personal-assistant-db",
+    "database_id": "3da43036-eabc-4b01-a4f1-979cf49f94a3",
+    "migrations_dir": "migrations"
+  }],
   "ratelimits": [
     {
       "name": "LOGIN_LIMIT",

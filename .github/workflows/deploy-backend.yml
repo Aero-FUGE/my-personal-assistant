@@ -1,6 +1,16 @@
 name: Deploy private DeepSeek backend
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "操作：deploy 仅部署；migrate 仅迁移 D1；migrate-and-deploy 迁移后部署"
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - migrate
+          - migrate-and-deploy
 permissions:
   contents: read
 concurrency:
@@ -18,14 +28,26 @@ jobs:
       - run: npm ci
       - run: npm run backend:check
       - run: npm test
-      - name: Deploy Worker and upload encrypted Secrets
+      - name: Check existing Cloudflare credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
-          node --input-type=module -e 'for(const key of ["CLOUDFLARE_API_TOKEN","CLOUDFLARE_ACCOUNT_ID","DEEPSEEK_API_KEY","APP_PASSWORD","SESSION_SECRET"]){if(!process.env[key]){console.error("Missing secret: "+key);process.exit(1);}} if(process.env.APP_PASSWORD.length<16||process.env.SESSION_SECRET.length<32){console.error("APP_PASSWORD needs 16+ characters; SESSION_SECRET needs 32+ characters.");process.exit(1);}'
-          npm run backend:deploy
-          node --input-type=module -e 'process.stdout.write(JSON.stringify({DEEPSEEK_API_KEY:process.env.DEEPSEEK_API_KEY,APP_PASSWORD:process.env.APP_PASSWORD,SESSION_SECRET:process.env.SESSION_SECRET}));' | npx wrangler secret bulk --config backend/wrangler.jsonc
+          node --input-type=module -e 'for(const key of ["CLOUDFLARE_API_TOKEN","CLOUDFLARE_ACCOUNT_ID"]){if(!process.env[key]){console.error("Missing secret: "+key);process.exit(1);}}'
+      - name: Apply remote D1 migrations (PUSH_DB)
+        if: ${{ inputs.operation == 'migrate' || inputs.operation == 'migrate-and-deploy' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if ! npx wrangler d1 migrations apply PUSH_DB --remote --config backend/wrangler.jsonc; then
+            echo '::error::D1 migration failed. For authentication/authorization errors (including 7403), check that the existing token has Account > D1 > Edit for the account containing PUSH_DB. Keep existing Workers permissions. No Secrets were changed by this workflow.'
+            exit 1
+          fi
+          printf '%s\n' 'D1 remote migration completed successfully for PUSH_DB (my-personal-assistant-db). Already-applied migrations are skipped. No database was created or cleared.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Deploy Worker (preserve existing Secrets)
+        if: ${{ inputs.operation == 'deploy' || inputs.operation == 'migrate-and-deploy' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run backend:deploy
