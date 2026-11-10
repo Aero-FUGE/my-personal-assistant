@@ -1,7 +1,7 @@
 name: Verify stage2 deployment
 on:
   push:
-    branches: [verify/stage2-20261110, test/push-20261110]
+    branches: [verify/stage2-20261110, test/push-20261110, test/cron-20261110]
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,3 +29,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: node scripts/test-live-push.mjs
+      - name: Verify one authorized notification through real Cron
+        if: github.ref_name == 'test/cron-20261110'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: node scripts/test-scheduled-push.mjs
