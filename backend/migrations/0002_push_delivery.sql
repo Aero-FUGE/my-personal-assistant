@@ -1,0 +1,15 @@
+ALTER TABLE push_reminders ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_reminders ADD COLUMN next_attempt_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_reminders ADD COLUMN leased_until INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_reminders ADD COLUMN last_http INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_reminders ADD COLUMN last_error TEXT NOT NULL DEFAULT '';
+ALTER TABLE push_reminders ADD COLUMN sent_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_devices ADD COLUMN last_test_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_devices ADD COLUMN last_test_status INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE push_devices ADD COLUMN last_test_error TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS push_runtime (
+ id TEXT PRIMARY KEY, last_tick INTEGER NOT NULL DEFAULT 0,
+ last_success INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '',
+ run_count INTEGER NOT NULL DEFAULT 0, last_due_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS push_retry_due ON push_reminders(state,next_attempt_at,due_at);
