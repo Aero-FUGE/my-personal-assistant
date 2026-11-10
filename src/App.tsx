@@ -1,7 +1,14 @@
 import { AISettingsPanel, AIModeNotice } from "./ai-settings";
+import { PushSettingsPanel } from "./push-settings";
 import { AppearanceControls } from "./appearance";
 import { useEffect, useState, useRef, type FormEvent } from "react";
-import { HashRouter, Routes, Route, Link } from "react-router-dom";
+import {
+  HashRouter,
+  Routes,
+  Route,
+  Link,
+  useSearchParams,
+} from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   Plus,
@@ -322,9 +329,17 @@ function Today() {
 }
 function Tasks() {
   const { tasks, projects } = useData();
+  const [params] = useSearchParams();
+  const focus = params.get("focus");
   const [edit, setEdit] = useState<Task | null | undefined>();
   const [filter, setFilter] = useState("全部");
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    if (focus) {
+      const task = tasks.find((t) => t.id === focus);
+      if (task) setEdit(task);
+    }
+  }, [focus, tasks.find((t) => t.id === focus)?.id]);
   return (
     <>
       <PageTitle
@@ -684,7 +699,7 @@ function Schedule() {
         )}
       </GamePanel>
       <p className="muted">
-        上下移动会保存当日执行顺序，具体时间可通过编辑任务调整。智能自动规划将在后端接入后提供。
+        上下移动会保存当日执行顺序，具体时间可通过编辑任务调整。也可以直接对律说“安排一下今天的工作”，由律结合已有任务给出初步计划。
       </p>
       <SectionHeader title="未完成，重新安排" />
       <GamePanel>
@@ -695,11 +710,22 @@ function Schedule() {
   );
 }
 function Reminders() {
+  const [params] = useSearchParams();
+  const focus = params.get("focus");
   useClock();
   const reminders = useLiveQuery(() => db.reminders.toArray()) || [];
   const [edit, setEdit] = useState<Reminder | null | undefined>();
   const [error, setError] = useState("");
   const [showDone, setShowDone] = useState(false);
+  useEffect(() => {
+    if (focus) {
+      const r = reminders.find((r) => r.id === focus);
+      if (r) {
+        setShowDone(true);
+        setEdit(r);
+      }
+    }
+  }, [focus, reminders.find((r) => r.id === focus)?.id]);
   return (
     <>
       <PageTitle
@@ -713,8 +739,7 @@ function Reminders() {
         }
       />
       <div className="notice">
-        应用内提醒在打开应用时检查。GitHub Pages
-        无法保证应用关闭后的定时推送；本阶段未启用服务端推送。
+        后台提醒请在“数据与设置”开启通知，并确认云端同步成功。未开启时仍可在此查看提醒。
       </div>
       <label className="checkbox-label">
         <input
@@ -1060,6 +1085,7 @@ function Settings() {
     <>
       <PageTitle title="数据与设置" sub="您的信息，由您掌握。" />
       <AISettingsPanel />
+      <PushSettingsPanel />
       <AppearanceControls />
       <GamePanel>
         <SectionHeader title="本地数据与备份" />

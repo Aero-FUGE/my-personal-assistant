@@ -1,3 +1,5 @@
+> 第二阶段更新：当前前端已迁移至 Cloudflare，推送及部署请优先遵循 [第二阶段说明](stage2-push.md)。下文保留旧阶段背景；后端工作流现仅迁移 D1 和部署，不再上传或覆盖已有 Secrets。
+
 # DeepSeek 安全接入与验收
 
 ## 当前状态
@@ -21,7 +23,7 @@
 可在自己终端运行 `openssl rand -hex 32` 生成随机签名密钥。不要将任何真实值写进仓库、聊天、截图或 `VITE_*` 环境变量。
 
 4. GitHub → Actions → **Deploy private DeepSeek backend** → Run workflow。此工作流只手动触发，不会因前端每次更新而改变后端密钥。它先部署 Worker，再从环境变量经标准输入写入 Cloudflare 加密 Secrets，不把密钥放进构建产物。
-5. 在 Cloudflare Workers 中打开 `my-personal-assistant-api`，找到实际的 HTTPS `workers.dev` 地址。后端配置中的 `ALLOWED_ORIGIN` 必须为前端来源 **https://aero-fuge.github.io**（不含仓库路径和末尾斜线）；自定义域名时一起修改。
+5. 在 Cloudflare Workers 中打开 `my-personal-assistant-api`，找到实际的 HTTPS `workers.dev` 地址。后端配置中的 `ALLOWED_ORIGIN` 必须为前端来源 **https://my-personal-assistant.2563247782.workers.dev**（不含仓库路径和末尾斜线）；自定义域名时一起修改。
 6. 手机打开正式站 → 数据与设置 → 律 · AI 连接，填写 **Worker 根地址** 和 **APP_PASSWORD 私人口令**，确认云端数据说明，点击连接。不要填 DeepSeek API Key。Worker 地址本身不是网页，直接在地址栏打开可能因来源保护显示拒绝访问；请通过正式前端连接。
 7. 登录成功只验证后端和口令。先发送“你好”，收到正常 AI 回复，才算真实 DeepSeek 连通。若余额/Key/模型/网络有问题会明确报错，不会暗中退回 Mock。
 

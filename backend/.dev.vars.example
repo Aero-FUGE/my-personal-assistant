@@ -2,3 +2,7 @@
 DEEPSEEK_API_KEY=""
 APP_PASSWORD=""
 SESSION_SECRET=""
+# Optional local Web Push testing (never put real values in this example).
+VAPID_PUBLIC_KEY=""
+VAPID_PRIVATE_KEY=""
+VAPID_SUBJECT=""

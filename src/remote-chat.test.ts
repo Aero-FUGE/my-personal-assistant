@@ -43,13 +43,13 @@ describe("DeepSeek 计划与真实数据事务", () => {
     const provider = planner(plan(task()));
     const id = await sendRemote("安排写歌", undefined, "request-one", provider);
     expect(await db.tasks.count()).toBe(1);
-    expect((await last()).content).toContain("本地数据库操作成功");
+    expect((await last()).content).toContain("已经为您办妥");
     expect((await last()).provider).toBe("deepseek");
     await sendRemote("安排写歌", id, "request-one", provider);
     expect(await db.tasks.count()).toBe(1);
     expect(provider).toHaveBeenCalledTimes(1);
   });
-  it("新项目与两个关联任务先确认，确认后原子保存且无需再调用模型", async () => {
+  it("新项目与关联任务信息完整时直接原子保存", async () => {
     const provider = planner(
       plan(
         {
@@ -66,9 +66,8 @@ describe("DeepSeek 计划与真实数据事务", () => {
       ),
     );
     const id = await sendRemote("筹备一张专辑", undefined, undefined, provider);
-    expect(await db.projects.count()).toBe(0);
-    expect(await remotePendingFor(id)).toBeTruthy();
-    await sendRemote("确认执行", id, undefined, provider);
+    expect(await db.projects.count()).toBe(1);
+    expect(await remotePendingFor(id)).toBeUndefined();
     const project = (await db.projects.toArray())[0];
     expect(project.title).toBe("我的专辑");
     expect(await db.tasks.count()).toBe(2);
@@ -193,34 +192,34 @@ describe("DeepSeek 计划与真实数据事务", () => {
     ]);
     expect(await db.messages.count()).toBe(0);
   });
-  it("批量执行中途失败回滚所有写入，并保留待确认记录供重试", async () => {
-    const id = await sendRemote(
-      "创建项目与任务",
-      undefined,
-      undefined,
-      planner(
-        plan(
-          {
-            kind: "createProject",
-            ref: "$p",
-            title: "新计划",
-            description: "",
-            stage: "规划",
-            status: "进行中",
-            nextAction: "",
-          },
-          task("任务", { projectId: "$p" }),
-        ),
-      ),
-    );
+  it("直接批量执行中途失败回滚所有写入，不虚报成功", async () => {
     vi.spyOn(TaskService, "save").mockRejectedValueOnce(
       new Error("磁盘空间不足"),
     );
-    await expect(sendRemote("确认执行", id)).rejects.toThrow("磁盘空间不足");
+    await expect(
+      sendRemote(
+        "创建项目与任务",
+        undefined,
+        undefined,
+        planner(
+          plan(
+            {
+              kind: "createProject",
+              ref: "$p",
+              title: "新计划",
+              description: "",
+              stage: "规划",
+              status: "进行中",
+              nextAction: "",
+            },
+            task("任务", { projectId: "$p" }),
+          ),
+        ),
+      ),
+    ).rejects.toThrow("磁盘空间不足");
     expect(await db.projects.count()).toBe(0);
     expect(await db.tasks.count()).toBe(0);
-    expect(await db.messages.count()).toBe(2);
-    expect(await remotePendingFor(id)).toBeTruthy();
+    expect(await db.messages.count()).toBe(0);
   });
   it("项目连续性日志、记忆、提醒与日程使用既有服务保存，备份兼容新来源字段", async () => {
     const p = await ProjectService.save({ title: "成长计划" }),
@@ -285,7 +284,7 @@ describe("DeepSeek 计划与真实数据事务", () => {
   });
   it("无工具操作时不能信任模型的第一人称假成功回复", async () => {
     await sendRemote("安排事务", undefined, undefined, planner(plan()));
-    expect((await last()).content).toContain("本轮未修改");
+    expect((await last()).content).toContain("还没有替您保存");
     expect(await db.tasks.count()).toBe(0);
   });
 });

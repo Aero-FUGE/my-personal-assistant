@@ -1,3 +1,4 @@
+import { PushSyncNotice } from "./push-settings";
 import { AIModeBadge } from "./ai-settings";
 import { useRef, useEffect, type ReactNode } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
@@ -199,6 +200,7 @@ function StudyShell() {
           </div>
         )}
         <main>
+          <PushSyncNotice />
           <Outlet />
         </main>
         <footer>

@@ -11,7 +11,7 @@ const task = (title: string, projectId = "") => ({
   projectId,
   notes: "",
 });
-test("安全代理接口模拟：首页与完整聊天共享 AI 真实数据操作，项目批量确认和失败保护", async ({
+test("安全代理接口模拟：首页与完整聊天共享 AI 真实数据操作，项目批量直接执行和失败保护", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -33,6 +33,14 @@ test("安全代理接口模拟：首页与完整聊天共享 AI 真实数据操�
           token: "e2e-interface-fixture-not-real-auth",
           expiresIn: 86400,
         },
+        headers,
+      });
+      return;
+    }
+    if (request.url().includes("/push/")) {
+      await route.fulfill({
+        status: 503,
+        json: { error: "测试未启用通知后端" },
         headers,
       });
       return;
@@ -108,12 +116,6 @@ test("安全代理接口模拟：首页与完整聊天共享 AI 真实数据操�
     .getByRole("textbox", { name: "对话内容" })
     .fill("创建一个项目并添加任务");
   await page.getByRole("button", { name: "发送消息" }).click();
-  await expect(page.getByRole("group", { name: "待确认操作" })).toContainText(
-    "云端测试项目",
-  );
-  await page.reload();
-  await expect(page.getByRole("group", { name: "待确认操作" })).toBeVisible();
-  await page.getByRole("button", { name: "确认执行", exact: true }).click();
   await expect(page.getByText(/已创建项目「云端测试项目」/)).toBeVisible();
   expect(calls).toBe(2);
   await page

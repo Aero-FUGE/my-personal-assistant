@@ -5,9 +5,10 @@
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
   "vars": {
-    "ALLOWED_ORIGIN": "https://aero-fuge.github.io",
+    "ALLOWED_ORIGIN": "https://my-personal-assistant.2563247782.workers.dev",
     "DEEPSEEK_MODEL": "deepseek-flash",
   },
+  "triggers": { "crons": ["* * * * *"] },
   "d1_databases": [{
     "binding": "PUSH_DB",
     "database_name": "my-personal-assistant-db",

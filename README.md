@@ -1,3 +1,5 @@
+> 第二阶段后台推送：实现与部署说明见 [后台通知配置和 iPhone 验收](docs/stage2-push.md)。当前生产前端使用 Cloudflare 域名；下文 GitHub Pages 和“仅应用内提醒”的旧阶段记录不代表本次部署方式或推送能力。新增推送需要手动配置 D1、VAPID 并部署前后端。
+
 # 我的特助
 
 面向 iPhone 的中文私人生活与事业管理 PWA。React + TypeScript + Vite + React Router（HashRouter）+ Dexie / IndexedDB。默认是可离线使用的本地管理工具，对话为**明确标识的 Mock 规则服务**。现已提供独立 Cloudflare Worker 与 DeepSeek 工具调用流程，需自行配置后端 Secrets 后启用；真实模型尚待配置联调。前端不接收或保存 DeepSeek API Key。

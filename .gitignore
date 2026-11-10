@@ -12,3 +12,4 @@ playwright-report/
 .wrangler/
 .wrangler-dry-run/
 !.dev.vars.example
+backend/.vapid/

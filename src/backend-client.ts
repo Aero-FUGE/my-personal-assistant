@@ -141,3 +141,25 @@ export async function requestAIPlan(input: {
   if (!parsed.success) throw new Error("AI 响应未通过校验，本轮未修改数据。");
   return parsed.data.plan;
 }
+
+// Authenticated push control uses the existing short-lived session; never persist the password.
+export async function pushRequest(path: string, body: unknown = {}) {
+  if (!connected()) throw new Error("请先连接私人后端，提醒尚未同步。");
+  const session = JSON.parse(sessionStorage.getItem(tokenKey)!);
+  try {
+    return await request(
+      aiSettings().endpoint,
+      "/push/" + path,
+      body,
+      session.token,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "通知请求失败。";
+    throw new Error(
+      message
+        .replace("AI 后端", "通知后端")
+        .replace("本轮未修改数据", "云端提醒尚未确认更新，本地数据仍保留")
+        .replace("AI 服务暂不可用", "通知服务暂不可用"),
+    );
+  }
+}

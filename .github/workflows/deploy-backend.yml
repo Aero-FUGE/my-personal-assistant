@@ -1,13 +1,26 @@
 name: Deploy private DeepSeek backend
 on:
+  workflow_call:
+    inputs:
+      operation:
+        required: true
+        type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      APP_PASSWORD:
+        required: true
   workflow_dispatch:
     inputs:
       operation:
-        description: "操作：diagnose Token 与 D1 只读诊断；deploy 部署；migrate 迁移；migrate-and-deploy 两者"
+        description: "操作：release 第二阶段完整上线；diagnose 只读诊断；deploy 部署；migrate 迁移；migrate-and-deploy 两者"
         required: true
         type: choice
         default: deploy
         options:
+          - release
           - diagnose
           - deploy
           - migrate
@@ -38,8 +51,22 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/diagnose-cloudflare-token.mjs
+      - name: Build frontend and verify release helpers
+        if: ${{ inputs.operation == 'release' }}
+        env:
+          VITE_BASE_PATH: /
+        run: |
+          node --test scripts/diagnose-cloudflare-token.test.mjs scripts/release-stage2.test.mjs
+          npm run build
+      - name: Verify D1, migrate, deploy backend, configure VAPID and deploy frontend
+        if: ${{ inputs.operation == 'release' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: node scripts/release-stage2.mjs
       - name: Check existing Cloudflare credentials
-        if: ${{ inputs.operation != 'diagnose' }}
+        if: ${{ inputs.operation != 'diagnose' && inputs.operation != 'release' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

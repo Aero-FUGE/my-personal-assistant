@@ -13,9 +13,13 @@
     "backend:dev": "wrangler dev --config backend/wrangler.jsonc",
     "backend:deploy": "wrangler deploy --config backend/wrangler.jsonc",
     "backend:check": "tsc --noEmit --target ES2022 --lib ES2022,DOM --moduleResolution Bundler --module ESNext --strict --skipLibCheck backend/worker.ts",
-    "backend:dry-run": "wrangler deploy --config backend/wrangler.jsonc --dry-run --outdir ../.wrangler-dry-run"
+    "backend:dry-run": "wrangler deploy --config backend/wrangler.jsonc --dry-run --outdir ../.wrangler-dry-run",
+    "frontend:deploy": "npm run build && wrangler deploy --config wrangler.frontend.jsonc",
+    "push:keys": "node scripts/generate-vapid.mjs",
+    "push:migrate": "wrangler d1 migrations apply my-personal-assistant-db --remote --config backend/wrangler.jsonc"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "lucide-react": "^0.468.0",

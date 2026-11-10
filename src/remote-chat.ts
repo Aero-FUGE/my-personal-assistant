@@ -131,7 +131,7 @@ function operationSummary(o: AIOperation, s: Snapshot): string {
     case "saveMemory":
       return `保存长期记忆：${o.content}`;
     case "createReminder":
-      return `创建应用内提醒「${o.title}」：${o.dueAt}`;
+      return `创建提醒「${o.title}」：${o.dueAt}`;
     case "updateReminder":
       return `修改提醒「${o.title}」：${o.dueAt}`;
     case "completeReminder":
@@ -246,16 +246,19 @@ function checkOperations(plan: AIPlan, s: Snapshot) {
       );
   }
   const sensitive = plan.operations.some((o) =>
-    [
-      "deleteTask",
-      "deleteReminder",
-      "updateProject",
-      "saveMemory",
-      "saveDailyPlan",
-    ].includes(o.kind),
+    ["deleteTask", "deleteReminder", "updateProject", "saveMemory"].includes(
+      o.kind,
+    ),
   );
   return {
-    confirmation: plan.operations.length > 1 || sensitive || warnings.size > 0,
+    confirmation:
+      sensitive ||
+      warnings.size > 0 ||
+      plan.operations.some(
+        (o) =>
+          o.kind === "saveDailyPlan" &&
+          s.dailyPlans.some((p) => p.date === o.date),
+      ),
     summary: [...operationSummaries(plan, s), ...warnings].join("\n"),
   };
 }
@@ -347,14 +350,14 @@ async function applyOperations(plan: AIPlan) {
           completed: false,
         };
         await ReminderService.save(r);
-        results.push(`已保存应用内提醒「${r.title}」：${r.dueAt}`);
+        results.push(`已保存提醒「${r.title}」：${r.dueAt}`);
         break;
       }
       case "updateReminder": {
         const r = await db.reminders.get(o.reminderId);
         if (!r) throw new Error("提醒已不存在");
         await ReminderService.save({ ...r, title: o.title, dueAt: o.dueAt });
-        results.push(`已修改应用内提醒「${o.title}」：${o.dueAt}`);
+        results.push(`已修改提醒「${o.title}」：${o.dueAt}`);
         break;
       }
       case "completeReminder":
@@ -393,13 +396,13 @@ async function applyOperations(plan: AIPlan) {
       throw new Error("任务保存结果校验失败。");
   }
   return {
-    content: `总裁，本地数据库操作成功：\n${results.join("\n")}`,
+    content: `总裁，已经为您办妥：\n${results.join("\n")}`,
     affectedTaskIds,
   };
 }
 function makeContext(snapshot: Snapshot, messages: Message[]): AIContext {
   const d = new Date(),
-    localNow = `${day()}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    localNow = `${day()}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
   const tasks = [...snapshot.tasks]
     .sort(
       (a, b) =>
@@ -593,7 +596,7 @@ export async function sendRemote(
           /(我已|已经为您|已为您|已帮您|已替您)[\s\S]{0,60}(添加|创建|保存|安排|完成|删除|修改|更新)/.test(
             plan.reply,
           )
-            ? "模型没有返回可执行操作，本轮未修改本地数据。请明确需要执行的任务或项目。"
+            ? "总裁，这次还没有替您保存安排。请告诉我具体要处理哪件事，我来落实。"
             : plan.reply;
       } else if (risk!.confirmation) {
         const summary = risk!.summary;

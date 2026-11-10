@@ -45,6 +45,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("DeepSeek 安全代理", () => {
+  it("推送管理沿用登录鉴权，缺少资源时明确返回未配置而不影响聊天", async () => {
+    const e = env();
+    expect((await worker.fetch(request("/push/config", {}), e)).status).toBe(
+      401,
+    );
+    const t = await login(e);
+    const response = await worker.fetch(request("/push/config", {}, t), e);
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(await response.json())).toContain("后台通知尚未配置");
+  });
   it("准确限制来源、拒绝缺少Origin，并正确响应Safari预检", async () => {
     const e = env();
     expect(
