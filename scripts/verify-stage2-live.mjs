@@ -40,7 +40,8 @@ export async function verifyLive({password,fetcher=fetch}) {
   if(typeof session.token!=='string')throw new Error('LIVE_AUTH_FAILED');
   const push=await post('/push/config',{},session.token);
   if(!/^[A-Za-z0-9_-]{87}$/.test(push.publicKey||''))throw new Error('LIVE_VAPID_CONFIG_FAILED');
-  await post('/push/status',{deviceId:'00000000-0000-4000-8000-000000000001'},session.token);
+  const status=await post('/push/status',{deviceId:'00000000-0000-4000-8000-000000000001'},session.token);
+  if(status.vapidHealthy!==true)throw new Error('LIVE_VAPID_KEY_PAIR_CHECK_FAILED');
   return 'LIVE_FRONTEND_ICONS_SW_AUTH_CORS_VAPID_D1_PASSED';
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href) {

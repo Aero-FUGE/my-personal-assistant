@@ -133,6 +133,7 @@ export const ChatService = {
       await db.preferences.put({ id: ACTIVE_CHAT, value: id });
   },
   async send(text: string, conversationId?: string, requestId: string = uid()) {
+    const sentAt = Date.now();
     if (!text.trim() || text.length > 4000)
       throw new Error("请输入 1 至 4000 字的消息。");
     const selected =
@@ -143,7 +144,7 @@ export const ChatService = {
       (selected && (await remotePendingFor(selected))) ||
       (remoteEnabled() && !(selected && (await stateFor(selected)).pending))
     )
-      return sendRemote(text, selected, requestId);
+      return sendRemote(text, selected, requestId, undefined, sentAt);
     // 对话、上下文、任务和审计回复共用事务，失败不会留下“已完成”的假回复。
     return db.transaction(
       "rw",

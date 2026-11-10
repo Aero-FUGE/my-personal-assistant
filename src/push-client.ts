@@ -87,10 +87,12 @@ export async function enablePush() {
     (c) => c.charCodeAt(0),
   );
   let subscription = await registration.pushManager.getSubscription();
-  if (subscription) {
-    // An explicit update also repairs endpoints rejected with 404/410.
-    await subscription.unsubscribe();
-    subscription = null;
+  if (subscription?.options.applicationServerKey) {
+    const previous = new Uint8Array(subscription.options.applicationServerKey);
+    if (previous.length !== key.length || previous.some((b, i) => b !== key[i]))
+      throw new Error(
+        "当前订阅使用不同的推送公钥，需要人工检查；现有订阅已保留。",
+      );
   }
   if (!subscription)
     await registration.pushManager.subscribe({
@@ -119,6 +121,7 @@ export async function checkPushStatus() {
   const labels: Record<string, string> = {
     pending: "待发送",
     sent: "推送服务已接收",
+    retry: "等待重试",
     failed: "发送失败",
     sending: "发送中或结果未知",
     expired: "已逾期未补发",
@@ -131,7 +134,10 @@ export async function checkPushStatus() {
             `${labels[s.state] || s.state} ${s.count} 项`,
         )
         .join("；") || "暂无提醒") +
-      "。服务接收不代表手机送达。",
+      `。服务接收不代表手机送达。推送签名：${result.vapidHealthy ? "有效" : "异常"}。` +
+      (result.device
+        ? ` 设备登记：${result.device.enabled ? "有效" : "未登记或失效"}；最近测试 HTTP ${result.device.last_test_status || "暂无"}。`
+        : ""),
   );
 }
 export async function testPush() {
@@ -157,7 +163,12 @@ export async function syncPush(): Promise<void> {
     while (dirty) {
       dirty = false;
       const c = pushConfig();
-      if (!c.enabled) return;
+      if (!c.enabled) {
+        pushStatus(
+          "系统通知尚未开启：提醒仅保存在本机。请到设置点击“开启通知”并完成云端同步。",
+        );
+        return;
+      }
       pushStatus("提醒有更新，正在同步…");
       if (!navigator.onLine || !connected())
         throw new Error(
@@ -210,7 +221,7 @@ export async function syncPush(): Promise<void> {
       });
       if (!dirty)
         pushStatus(
-          "云端提醒已同步。每项到期提醒最多发送一次；投递可能有延迟。",
+          "云端提醒已同步。按分钟调度，正常只提醒一次；临时失败会有限重试。",
         );
     }
   })()

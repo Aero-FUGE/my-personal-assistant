@@ -16,6 +16,30 @@ export function PushSettingsPanel() {
     currentPushStatus() ||
       "尚未确认本次同步状态。开启后，仅同步提醒标题、时间、时区和定位标识。",
   );
+  const [phone, setPhone] = useState("正在检查手机通知条件…");
+  async function inspectPhone() {
+    const installed =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone;
+    const permission =
+      typeof Notification === "undefined"
+        ? "不支持"
+        : Notification.permission === "granted"
+          ? "已允许"
+          : Notification.permission === "denied"
+            ? "已拒绝"
+            : "尚未申请";
+    let subscribed = false;
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      subscribed = !!(await registration?.pushManager.getSubscription());
+    } catch {
+      /* reflect unavailable state without blocking other functions */
+    }
+    setPhone(
+      `安装：${installed ? "主屏幕 PWA" : "浏览器页面"}；通知权限：${permission}；设备订阅：${subscribed ? "已建立" : "未建立"}。`,
+    );
+  }
   const [interval, setInterval] = useState(pushConfig().minInterval);
   const [busy, setBusy] = useState(false),
     [mode, setMode] = useState(pushConfig().mode);
@@ -27,6 +51,7 @@ export function PushSettingsPanel() {
     window.addEventListener("assistant-push-status", status);
     window.addEventListener("assistant-ai-change", prepare);
     prepare();
+    void inspectPhone();
     return () => {
       window.removeEventListener("assistant-push-status", status);
       window.removeEventListener("assistant-ai-change", prepare);
@@ -40,17 +65,19 @@ export function PushSettingsPanel() {
       setMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      void inspectPhone();
     }
   }
   return (
     <section className="panel" aria-label="后台系统通知">
       <h2>律 · 后台通知</h2>
+      <p aria-label="手机通知条件">{phone}</p>
       <p>
         iPhone 请从主屏幕打开本应用（iOS 16.4 及以上）。允许通知后，Cloudflare
         会在应用关闭时发送到期提醒。需先连接私人后端。
       </p>
       <p>
-        每项到期提醒最多发送一次，不发送额外催促。可选择只提醒明确创建的提醒，减少打扰。系统或网络可能延迟或阻止送达。
+        提醒按分钟调度，10秒提醒不能精确到秒送达。发送遇到临时故障会有限重试，不发送额外催促。可选择只提醒明确创建的提醒，减少打扰。系统或网络可能延迟或阻止送达。
       </p>
       <label>
         通知范围
@@ -78,11 +105,14 @@ export function PushSettingsPanel() {
             void act(() => setPushInterval(value));
           }}
         >
-          <option value={0}>到期即发，每项一次</option>
+          <option value={0}>按分钟调度，正常只发一次</option>
           <option value={15}>最多每15分钟一条</option>
           <option value={60}>最多每小时一条</option>
         </select>
       </label>
+      <p>
+        首次使用必须点击“开启通知”并允许系统权限，仅连接 AI 不会自动启用通知。
+      </p>
       <p>选择间隔限制后，后续到期提醒会顺延；测试通知不受此限制。</p>
       <div className="actions">
         <button
@@ -123,7 +153,7 @@ export function PushSettingsPanel() {
       </div>
       <p role="status">{message}</p>
       <p>
-        关闭应用前，请确认显示“云端提醒已同步”。离线改期、完成或删除后，服务器仍保留旧安排，联网同步成功后才更新。首次同步时已经逾期的事项不会补发通知。
+        关闭应用前，请确认显示“云端提醒已同步”。离线改期、完成或删除后，服务器仍保留旧安排，联网同步成功后才更新。新同步时到期不足5分钟的提醒会补发，较早的历史事项不会补发。
       </p>
     </section>
   );

@@ -87,13 +87,24 @@ export function pushReady(env: PushEnv) {
     env.VAPID_SUBJECT
   );
 }
+export function deliveryFailure(error: unknown) {
+  const status = Number((error as { status?: number })?.status) || 0;
+  const retryable =
+    status === 0
+      ? (error as { retryable?: boolean })?.retryable === true
+      : status === 408 || status === 429 || status >= 500;
+  const code =
+    (error as { code?: string })?.code ||
+    (status ? `http_${status}` : "crypto_or_configuration");
+  return { status, retryable, code };
+}
 export async function sendPush(
   env: PushEnv,
   subscription: z.infer<typeof subscriptionSchema>,
   payload: object,
 ) {
   const request = await buildPushPayload(
-    { data: JSON.stringify(payload), options: { ttl: 300 } },
+    { data: JSON.stringify(payload), options: { ttl: 3600, urgency: "high" } },
     { ...subscription, expirationTime: subscription.expirationTime ?? null },
     {
       subject: env.VAPID_SUBJECT!,
@@ -101,14 +112,98 @@ export async function sendPush(
       privateKey: env.VAPID_PRIVATE_KEY!,
     },
   );
-  const response = await fetch(subscription.endpoint, {
-    ...request,
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok)
-    throw Object.assign(new Error("推送服务暂未接收通知，请稍后重试。"), {
-      status: response.status,
+  let response: Response;
+  try {
+    response = await fetch(subscription.endpoint, {
+      ...request,
+      signal: AbortSignal.timeout(15000),
     });
+  } catch {
+    throw Object.assign(new Error("推送网络暂不可用。"), {
+      status: 0,
+      code: "network_or_timeout",
+      retryable: true,
+    });
+  }
+  if (!response.ok) {
+    const allowed = [
+      "BadJwtToken",
+      "ExpiredProviderToken",
+      "BadCryptoKey",
+      "BadEncryption",
+      "BadTtl",
+      "BadVapidPublicKey",
+      "Unauthorized",
+      "TooManyRequests",
+      "Unregistered",
+      "BadDeviceToken",
+      "InvalidProviderToken",
+    ];
+    const body = await response.json().catch(() => ({}));
+    const reason = allowed.includes(body?.reason)
+      ? body.reason
+      : `http_${response.status}`;
+    throw Object.assign(new Error("推送服务暂未接收通知。"), {
+      status: response.status,
+      code: reason,
+    });
+  }
+  return response.status;
+}
+export async function vapidHealthy(env: PushEnv) {
+  try {
+    const decode = (value: string) =>
+      Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+        c.charCodeAt(0),
+      );
+    const encode = (value: Uint8Array) =>
+      btoa(String.fromCharCode(...value))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    const pub = decode(env.VAPID_PUBLIC_KEY!);
+    const subject = new URL(env.VAPID_SUBJECT!);
+    if (
+      pub.length !== 65 ||
+      pub[0] !== 4 ||
+      !["https:", "mailto:"].includes(subject.protocol)
+    )
+      return false;
+    const privateKey = await crypto.subtle.importKey(
+      "jwk",
+      {
+        kty: "EC",
+        crv: "P-256",
+        x: encode(pub.slice(1, 33)),
+        y: encode(pub.slice(33)),
+        d: env.VAPID_PRIVATE_KEY!,
+      },
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"],
+    );
+    const publicKey = await crypto.subtle.importKey(
+      "raw",
+      pub,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+    const data = crypto.getRandomValues(new Uint8Array(16));
+    const signature = await crypto.subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" },
+      privateKey,
+      data,
+    );
+    return await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      publicKey,
+      signature,
+      data,
+    );
+  } catch {
+    return false;
+  }
 }
 export async function pushRoute(path: string, body: unknown, env: PushEnv) {
   if (!pushReady(env))
@@ -216,14 +311,20 @@ export async function pushRoute(path: string, body: unknown, env: PushEnv) {
         .prepare(
           `INSERT INTO push_reminders(device_id,id,title,due_at,route,version,state)
     SELECT ?,json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.due'),json_extract(value,'$.route'),json_extract(value,'$.version'),
-      CASE WHEN json_extract(value,'$.due')<=? THEN 'expired' ELSE 'pending' END
+      CASE WHEN json_extract(value,'$.due')<? THEN 'expired' ELSE 'pending' END
     FROM json_each(?) WHERE ${guard}
     ON CONFLICT(device_id,id) DO UPDATE SET title=excluded.title,due_at=excluded.due_at,route=excluded.route,version=excluded.version,
-    state=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.state ELSE excluded.state END`,
+    state=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.state ELSE excluded.state END,
+    attempts=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.attempts ELSE 0 END,
+    next_attempt_at=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.next_attempt_at ELSE 0 END,
+    leased_until=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.leased_until ELSE 0 END,
+    last_http=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.last_http ELSE 0 END,
+    last_error=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.last_error ELSE '' END,
+    sent_at=CASE WHEN push_reminders.version=excluded.version THEN push_reminders.sent_at ELSE 0 END`,
         )
         .bind(
           v.deviceId,
-          Date.now(),
+          Date.now() - 300000,
           JSON.stringify(rows),
           v.deviceId,
           v.revision,
@@ -240,7 +341,32 @@ export async function pushRoute(path: string, body: unknown, env: PushEnv) {
       )
       .bind(v.deviceId)
       .all<{ state: string; count: number }>();
-    return { body: { states: rows.results } };
+    const device = await db
+      .prepare(
+        "SELECT enabled,last_test_at,last_test_status,last_test_error FROM push_devices WHERE id=?",
+      )
+      .bind(v.deviceId)
+      .first();
+    const runtime = await db
+      .prepare(
+        "SELECT last_tick,last_success,last_error,run_count FROM push_runtime WHERE id='cron'",
+      )
+      .first();
+    const failures = await db
+      .prepare(
+        "SELECT last_http,last_error,COUNT(*) AS count FROM push_reminders WHERE device_id=? AND state IN ('failed','retry') GROUP BY last_http,last_error",
+      )
+      .bind(v.deviceId)
+      .all();
+    return {
+      body: {
+        states: rows.results,
+        device: device || { enabled: 0 },
+        runtime,
+        failures: failures.results,
+        vapidHealthy: await vapidHealthy(env),
+      },
+    };
   }
   if (path === "/push/test") {
     const v = z.object({ deviceId: deviceSchema }).strict().parse(body);
@@ -249,13 +375,37 @@ export async function pushRoute(path: string, body: unknown, env: PushEnv) {
       .bind(v.deviceId)
       .first<Device>();
     if (!d) return { status: 409, body: { error: "请先开启通知。" } };
-    await sendPush(env, JSON.parse(d.subscription), {
-      title: "律 · 测试通知",
-      body: "总裁，后台通知通道已接通。",
-      url: d.app_url + "#/settings",
-      tag: "assistant-test",
-    });
-    return { body: { ok: true } };
+    try {
+      const status = await sendPush(env, JSON.parse(d.subscription), {
+        title: "律 · 测试通知",
+        body: "总裁，这是一条系统推送测试通知。",
+        url: d.app_url + "#/settings",
+        tag: "assistant-test",
+      });
+      await db
+        .prepare(
+          "UPDATE push_devices SET last_test_at=?,last_test_status=?,last_test_error='' WHERE id=?",
+        )
+        .bind(Date.now(), status, v.deviceId)
+        .run();
+      return { body: { ok: true, providerStatus: status } };
+    } catch (error) {
+      const failure = deliveryFailure(error);
+      await db
+        .prepare(
+          "UPDATE push_devices SET last_test_at=?,last_test_status=?,last_test_error=? WHERE id=?",
+        )
+        .bind(Date.now(), failure.status, failure.code, v.deviceId)
+        .run();
+      return {
+        status: 502,
+        body: {
+          error: `推送服务未接收测试通知（HTTP ${failure.status || "网络/加密错误"}，${failure.code}）。请查看投递记录。`,
+          providerStatus: failure.status,
+          code: failure.code,
+        },
+      };
+    }
   }
   return { status: 404, body: { error: "接口不存在。" } };
 }
@@ -270,77 +420,140 @@ interface Due {
   title: string;
   route: string;
   version: string;
+  attempts: number;
 }
 export async function dispatchReminders(env: PushEnv) {
   if (!pushReady(env)) return;
-  const db = env.PUSH_DB!;
+  const db = env.PUSH_DB!,
+    now = Date.now();
   await db
     .prepare(
-      "UPDATE push_reminders SET state='expired' WHERE state='pending' AND due_at<?",
+      "INSERT INTO push_runtime(id,last_tick,run_count) VALUES('cron',?,1) ON CONFLICT(id) DO UPDATE SET last_tick=excluded.last_tick,run_count=push_runtime.run_count+1",
     )
-    .bind(Date.now() - 86400000)
+    .bind(now)
     .run();
-  // At-most-once claim: choose no automatic resend after ambiguous network failure.
-  // A claimed delivery may be missed if the worker dies; never claim guaranteed delivery.
-  const rows = await db
-    .prepare(
-      "SELECT r.device_id,r.id,r.title,r.route,r.version FROM push_reminders r JOIN push_devices d ON d.id=r.device_id WHERE d.enabled=1 AND r.state='pending' AND r.due_at<=? AND (d.min_interval=0 OR d.last_sent+d.min_interval*60000<=?) ORDER BY r.due_at LIMIT 5",
-    )
-    .bind(Date.now(), Date.now())
-    .all<Due>();
-  for (const r of rows.results) {
-    const claimed = await db
+  try {
+    await db
       .prepare(
-        "UPDATE push_reminders SET state='sending' WHERE device_id=? AND id=? AND version=? AND state='pending' RETURNING id",
+        "UPDATE push_reminders SET state='expired' WHERE state IN ('pending','retry') AND due_at<?",
       )
-      .bind(r.device_id, r.id, r.version)
-      .first();
-    if (!claimed) continue;
-    const slot = await db
+      .bind(now - 86400000)
+      .run();
+    await db
       .prepare(
-        "UPDATE push_devices SET last_sent=? WHERE id=? AND enabled=1 AND (min_interval=0 OR last_sent+min_interval*60000<=?) RETURNING id",
+        "UPDATE push_reminders SET state='retry',next_attempt_at=? WHERE state='sending' AND leased_until<=? AND attempts<4",
       )
-      .bind(Date.now(), r.device_id, Date.now())
-      .first();
-    if (!slot) {
-      await db
+      .bind(now, now)
+      .run();
+    await db
+      .prepare(
+        "UPDATE push_reminders SET state='failed',last_error='lease_recovery_limit' WHERE state='sending' AND leased_until<=? AND attempts>=4",
+      )
+      .bind(now)
+      .run();
+    const rows = await db
+      .prepare(
+        "SELECT r.device_id,r.id,r.title,r.route,r.version,r.attempts FROM push_reminders r JOIN push_devices d ON d.id=r.device_id WHERE d.enabled=1 AND r.state IN ('pending','retry') AND r.due_at<=? AND r.next_attempt_at<=? AND (d.min_interval=0 OR d.last_sent+d.min_interval*60000<=?) ORDER BY r.due_at LIMIT 5",
+      )
+      .bind(now, now, now)
+      .all<Due>();
+    await db
+      .prepare("UPDATE push_runtime SET last_due_count=? WHERE id='cron'")
+      .bind(rows.results.length)
+      .run();
+    for (const r of rows.results) {
+      const claimed = await db
         .prepare(
-          "UPDATE push_reminders SET state='pending' WHERE device_id=? AND id=? AND version=? AND state='sending'",
+          "UPDATE push_reminders SET state='sending',leased_until=? WHERE device_id=? AND id=? AND version=? AND state IN ('pending','retry') RETURNING id",
+        )
+        .bind(Date.now() + 120000, r.device_id, r.id, r.version)
+        .first();
+      if (!claimed) continue;
+      const slot = await db
+        .prepare(
+          "UPDATE push_devices SET last_sent=? WHERE id=? AND enabled=1 AND (min_interval=0 OR last_sent+min_interval*60000<=?) RETURNING id",
+        )
+        .bind(Date.now(), r.device_id, Date.now())
+        .first();
+      if (!slot) {
+        await db
+          .prepare(
+            "UPDATE push_reminders SET state='retry',leased_until=0 WHERE device_id=? AND id=? AND version=? AND state='sending'",
+          )
+          .bind(r.device_id, r.id, r.version)
+          .run();
+        continue;
+      }
+      const d = await db
+        .prepare(
+          "SELECT d.* FROM push_devices d JOIN push_reminders r ON r.device_id=d.id WHERE d.id=? AND d.enabled=1 AND r.id=? AND r.version=? AND r.state='sending'",
         )
         .bind(r.device_id, r.id, r.version)
+        .first<Device>();
+      if (!d) continue;
+      const attempts = r.attempts + 1;
+      await db
+        .prepare(
+          "UPDATE push_reminders SET attempts=? WHERE device_id=? AND id=? AND version=? AND state='sending'",
+        )
+        .bind(attempts, r.device_id, r.id, r.version)
         .run();
-      continue;
-    }
-
-    const d = await db
-      .prepare(
-        "SELECT d.* FROM push_devices d JOIN push_reminders r ON r.device_id=d.id WHERE d.id=? AND d.enabled=1 AND r.id=? AND r.version=? AND r.state='sending'",
-      )
-      .bind(r.device_id, r.id, r.version)
-      .first<Device>();
-    if (!d) continue;
-    let state = "sent";
-    try {
-      await sendPush(env, JSON.parse(d.subscription), {
-        title: "律 · 事务提醒",
-        body: r.title,
-        url: d.app_url + r.route,
-        tag: `${r.device_id}:${r.id}`,
-      });
-    } catch (error) {
-      state = "failed";
-      const status = (error as { status?: number }).status;
-      if (status === 404 || status === 410)
+      try {
+        const providerStatus = await sendPush(env, JSON.parse(d.subscription), {
+          title: "律 · 事务提醒",
+          body: r.title,
+          url: d.app_url + r.route,
+          tag: `${r.device_id}:${r.id}`,
+        });
         await db
-          .prepare("UPDATE push_devices SET enabled=0 WHERE id=?")
+          .prepare(
+            "UPDATE push_reminders SET state='sent',sent_at=?,last_http=?,last_error='',leased_until=0 WHERE device_id=? AND id=? AND version=? AND state='sending'",
+          )
+          .bind(Date.now(), providerStatus, r.device_id, r.id, r.version)
+          .run();
+      } catch (error) {
+        const failure = deliveryFailure(error),
+          retry = failure.retryable && attempts < 4;
+        if (failure.status === 404 || failure.status === 410)
+          await db
+            .prepare("UPDATE push_devices SET enabled=0 WHERE id=?")
+            .bind(d.id)
+            .run();
+        // Failed sends must not consume the user's reminder-frequency slot.
+        await db
+          .prepare("UPDATE push_devices SET last_sent=0 WHERE id=?")
           .bind(d.id)
           .run();
+        await db
+          .prepare(
+            "UPDATE push_reminders SET state=?,next_attempt_at=?,last_http=?,last_error=?,leased_until=0 WHERE device_id=? AND id=? AND version=? AND state='sending'",
+          )
+          .bind(
+            retry ? "retry" : "failed",
+            Date.now() + [60000, 120000, 300000][Math.min(attempts - 1, 2)],
+            failure.status,
+            failure.code,
+            r.device_id,
+            r.id,
+            r.version,
+          )
+          .run();
+      }
     }
     await db
       .prepare(
-        "UPDATE push_reminders SET state=? WHERE device_id=? AND id=? AND version=? AND state='sending'",
+        "UPDATE push_runtime SET last_success=?,last_error='' WHERE id='cron'",
       )
-      .bind(state, r.device_id, r.id, r.version)
+      .bind(Date.now())
       .run();
+  } catch {
+    await db
+      .prepare(
+        "UPDATE push_runtime SET last_error='scheduler_execution_failed' WHERE id='cron'",
+      )
+      .run();
+    throw new Error(
+      "Scheduler execution failed; check private delivery diagnostics.",
+    );
   }
 }

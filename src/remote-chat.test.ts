@@ -39,6 +39,31 @@ const plan = (...operations: AIOperation[]): AIPlan => ({
 const planner = (p: AIPlan) => vi.fn(async () => p);
 const last = async () => (await db.messages.orderBy("createdAt").last())!;
 describe("DeepSeek 计划与真实数据事务", () => {
+  it("AI耗时不改变用户发送时刻，10秒提醒按该时刻精确计算并标明未开启通知", async () => {
+    const sent = Date.parse("2026-11-10T23:52:28+08:00");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(sent);
+    await sendRemote("10秒后提醒我喝水", undefined, undefined, async () => {
+      clock.mockReturnValue(sent + 2000);
+      return {
+        reply: "好的",
+        operations: [
+          {
+            kind: "createReminder",
+            title: "喝水",
+            dueAt: "2026-11-10T23:52:36",
+          },
+        ],
+      };
+    });
+    expect((await db.reminders.toArray())[0].dueAt).toBe(
+      "2026-11-10T15:52:38.000Z",
+    );
+    expect(
+      (await db.messages.filter((m) => m.role === "user").first())!.createdAt,
+    ).toBe(new Date(sent).toISOString());
+    expect((await last()).content).toContain("尚未开启系统通知");
+    expect((await last()).content).toContain("不保证秒级");
+  });
   it("普通任务实际落库、读回结果、来源标签、同请求幂等", async () => {
     const provider = planner(plan(task()));
     const id = await sendRemote("安排写歌", undefined, "request-one", provider);

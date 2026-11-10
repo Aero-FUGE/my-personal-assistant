@@ -1,4 +1,9 @@
 import {
+  preciseRelativeReminder,
+  reminderPrecisionNotice,
+} from "./reminder-time";
+import { pushConfig } from "./push-client";
+import {
   db,
   uid,
   now,
@@ -350,7 +355,9 @@ async function applyOperations(plan: AIPlan) {
           completed: false,
         };
         await ReminderService.save(r);
-        results.push(`已保存提醒「${r.title}」：${r.dueAt}`);
+        results.push(
+          `已保存提醒「${r.title}」：${new Date(r.dueAt).toLocaleString("zh-CN", { hour12: false })}。${pushConfig().enabled ? "云端同步成功后才会后台投递。" : "目前尚未开启系统通知，请到设置点击“开启通知”，否则不会收到后台通知。"}${reminderPrecisionNotice}`,
+        );
         break;
       }
       case "updateReminder": {
@@ -400,9 +407,13 @@ async function applyOperations(plan: AIPlan) {
     affectedTaskIds,
   };
 }
-function makeContext(snapshot: Snapshot, messages: Message[]): AIContext {
-  const d = new Date(),
-    localNow = `${day()}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+function makeContext(
+  snapshot: Snapshot,
+  messages: Message[],
+  sentAt: number,
+): AIContext {
+  const d = new Date(sentAt),
+    localNow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
   const tasks = [...snapshot.tasks]
     .sort(
       (a, b) =>
@@ -496,6 +507,7 @@ export async function sendRemote(
   conversationId?: string,
   requestId: string = uid(),
   planner = requestAIPlan,
+  sentAt: number = Date.now(),
 ) {
   if (!text.trim() || text.length > 4000)
     throw new Error("请输入1至4000字的消息。");
@@ -519,7 +531,7 @@ export async function sendRemote(
     !pending &&
     /^(确认|确认执行|确认删除|取消|取消操作|算了)[。！!\s]*$/.test(text.trim());
   // Network work is intentionally OUTSIDE IndexedDB transactions.
-  const plan = pending
+  const proposed = pending
     ? pending.plan
     : controlOnly
       ? {
@@ -529,9 +541,12 @@ export async function sendRemote(
       : planSchema.parse(
           await planner({
             text: text.trim(),
-            context: makeContext(snapshot, messages),
+            context: makeContext(snapshot, messages, sentAt),
           }),
         );
+  const plan = pending
+    ? proposed
+    : preciseRelativeReminder(proposed, text, sentAt);
   const risk = pending ? undefined : checkOperations(plan, snapshot);
   return db.transaction("rw", tables(), async () => {
     const existing = await db.messages.get(requestId);
@@ -623,7 +638,7 @@ export async function sendRemote(
       });
     await db.preferences.put({ id: activeKey, value: id });
     const timestamp = Math.max(
-      Date.now(),
+      sentAt,
       (Date.parse(latest.at(-1)?.createdAt || "") || 0) + 1,
     );
     await db.messages.add({
@@ -641,7 +656,7 @@ export async function sendRemote(
       conversationId: id,
       role: "assistant",
       content,
-      createdAt: new Date(timestamp + 1).toISOString(),
+      createdAt: new Date(Math.max(Date.now(), timestamp + 1)).toISOString(),
       proposals: [],
       applied,
       affectedTaskIds,
